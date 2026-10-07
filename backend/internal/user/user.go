@@ -21,12 +21,12 @@ var (
 	ErrNotFound      = errors.New("user not found")
 	ErrEmailTaken    = errors.New("email is already in use")
 	ErrRootProtected = errors.New("the configured root account cannot be deleted or change its email")
-	ErrInvalidInput  = errors.New("provide a name, valid email, and a password between 6 and 72 bytes")
+	ErrInvalidInput  = errors.New("provide a plain-text name up to 255 bytes, valid email, and a password between 8 and 72 bytes")
 )
 
 type UserInput struct {
 	Name     string `json:"name" minLength:"1" maxLength:"255"`
-	Email    string `json:"email" format:"email" maxLength:"255"`
+	Email    string `json:"email" maxLength:"254"`
 	Password string `json:"password,omitempty" maxLength:"72"`
 }
 
@@ -50,9 +50,4 @@ type AdminUsecase interface {
 
 type MyUsecase interface {
 	GetProfile(ctx context.Context, id uuid.UUID) (*User, error)
-}
-
-type PublicUsecase interface {
-	GetUser(ctx context.Context, id uuid.UUID) (*User, error)
-	ListUsers(ctx context.Context) ([]*User, error)
 }

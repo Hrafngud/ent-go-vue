@@ -15,6 +15,8 @@ Browser → Nginx
 
 The frontend and API share one origin through a reverse proxy. The backend groups features under `internal/auth` and `internal/user`, with domain, use case, repository, and HTTP layers. Ent defines the schema; Atlas applies committed SQL migrations before the API starts.
 
+Inputs are validated in both layers, API bodies and request rates are limited, and user management requires root access.
+
 | Path | Contents |
 | --- | --- |
 | `backend/cmd/api/` | API entry point |

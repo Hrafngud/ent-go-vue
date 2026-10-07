@@ -7,7 +7,7 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	for _, key := range []string{"DATABASE_URL", "PORT", "JWT_SECRET", "DB_HOST", "DB_PORT", "DB_USER", "DB_PASSWORD", "DB_NAME", "DB_SSLMODE", "ROOT_EMAIL", "ROOT_PASSWORD"} {
+	for _, key := range []string{"DATABASE_URL", "PORT", "JWT_SECRET", "DB_HOST", "DB_PORT", "DB_USER", "DB_PASSWORD", "DB_NAME", "DB_SSLMODE", "ROOT_EMAIL", "ROOT_PASSWORD", "TRUSTED_PROXY_CIDRS"} {
 		t.Setenv(key, "")
 	}
 	t.Setenv("JWT_SECRET", strings.Repeat("a", 32))
@@ -48,6 +48,7 @@ func TestLoad(t *testing.T) {
 }
 
 func TestRootCredentials(t *testing.T) {
+	t.Setenv("TRUSTED_PROXY_CIDRS", "")
 	t.Setenv("DATABASE_URL", "postgres://user:secret@localhost/app")
 	t.Setenv("JWT_SECRET", strings.Repeat("a", 32))
 	t.Setenv("PORT", "8080")
@@ -81,5 +82,24 @@ func TestRootCredentials(t *testing.T) {
 				t.Fatal("validation error leaked password")
 			}
 		})
+	}
+}
+
+func TestTrustedProxyConfiguration(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		count int
+		valid bool
+	}{
+		{"", 0, true},
+		{" 172.30.90.2/32, ::1/128 ", 2, true},
+		{"0.0.0.0/0", 0, false},
+		{"::/0", 0, false},
+		{"192.0.2.1", 0, false},
+	} {
+		prefixes, err := trustedProxies(tc.value)
+		if (err == nil) != tc.valid || len(prefixes) != tc.count {
+			t.Fatalf("%q: prefixes=%v, error=%v", tc.value, prefixes, err)
+		}
 	}
 }

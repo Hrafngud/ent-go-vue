@@ -14,8 +14,8 @@ import (
 type RegisterRequest struct {
 	Body struct {
 		Name     string `json:"name" doc:"User's full name" example:"John Doe" minLength:"1" maxLength:"255"`
-		Email    string `json:"email" doc:"User's email" format:"email"`
-		Password string `json:"password" doc:"User's password" minLength:"6" maxLength:"72"`
+		Email    string `json:"email" doc:"User's email" maxLength:"254"`
+		Password string `json:"password" doc:"User's password (8 to 72 UTF-8 bytes)" minLength:"1" maxLength:"72"`
 	}
 }
 
@@ -25,8 +25,8 @@ type RegisterResponse struct {
 
 type LoginRequest struct {
 	Body struct {
-		Email    string `json:"email" doc:"User's email" format:"email"`
-		Password string `json:"password" doc:"User's password"`
+		Email    string `json:"email" doc:"User's email" maxLength:"254"`
+		Password string `json:"password" doc:"User's password" minLength:"1" maxLength:"72"`
 	}
 }
 
@@ -68,7 +68,7 @@ func RegisterRoutes(api huma.API, uc auth.Usecase) {
 	}, func(ctx context.Context, input *LoginRequest) (*LoginResponse, error) {
 		token, err := uc.Login(ctx, input.Body.Email, input.Body.Password)
 		if err != nil {
-			return nil, huma.Error401Unauthorized("invalid credentials", err)
+			return nil, huma.Error401Unauthorized("invalid credentials")
 		}
 		resp := &LoginResponse{}
 		resp.Body.Token = token

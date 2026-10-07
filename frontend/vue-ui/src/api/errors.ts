@@ -2,6 +2,8 @@ import { ApiError } from './client'
 
 export function userError(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
+    if (error.status === 429) return `Too many attempts. Please wait ${error.retryAfter} seconds before trying again.`
+    if (error.status === 413) return 'This request is too large. Shorten the input and try again.'
     if (error.status === 409) return 'This email address is already in use. Choose another address.'
     if (error.status === 403) return 'This action is not allowed. User management is reserved for the root account.'
     if (error.status === 404) return 'This user no longer exists. Return to the users list.'

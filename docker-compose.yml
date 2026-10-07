@@ -67,6 +67,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set a random JWT_SECRET of at least 32 characters in .env}
       ROOT_EMAIL: ${ROOT_EMAIL:-}
       ROOT_PASSWORD: ${ROOT_PASSWORD:-}
+      TRUSTED_PROXY_CIDRS: ${NGINX_INTERNAL_IP:-172.30.90.2}/32
     depends_on:
       postgres:
         condition: service_healthy
@@ -122,6 +123,9 @@ services:
       NGINX_ENVSUBST_FILTER: ^BACKEND_PORT$$
     ports:
       - "${HTTP_PORT:-80}:8080"
+    networks:
+      default:
+        ipv4_address: ${NGINX_INTERNAL_IP:-172.30.90.2}
     depends_on:
       backend:
         condition: service_healthy
@@ -139,3 +143,12 @@ services:
 
 volumes:
   postgres_data:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${APP_SUBNET:-172.30.90.0/24}
+          # Keep automatic allocations away from Nginx's fixed address. Docker
+          # attaches dependencies before Nginx and could otherwise assign it .2.
+          ip_range: ${APP_IP_RANGE:-172.30.90.128/25}

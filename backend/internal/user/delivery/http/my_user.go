@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"backend-golang/internal/auth/middleware"
@@ -32,7 +33,10 @@ func RegisterMyUserRoutes(api huma.API, uc user.MyUsecase, secret []byte) {
 	}, func(ctx context.Context, input *MyUserRequest) (*MyUserResponse, error) {
 		usr, err := uc.GetProfile(ctx, middleware.UserID(ctx))
 		if err != nil {
-			return nil, huma.Error404NotFound("user not found", err)
+			if errors.Is(err, user.ErrNotFound) {
+				return nil, huma.Error404NotFound("user not found")
+			}
+			return nil, huma.Error500InternalServerError("could not load profile")
 		}
 		resp := &MyUserResponse{}
 		resp.Body.Data = usr

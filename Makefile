@@ -11,7 +11,7 @@ build:
 	$(COMPOSE) build
 test:
 	cd backend && go test -count=1 ./... && go vet ./cmd/... ./internal/... && go build -o /tmp/ent-go-vue-api ./cmd/api
-	cd frontend/vue-ui && npm run build
+	cd frontend/vue-ui && npm test && npm run build
 lint:
 	$(MAKE) -C backend lint
 	cd frontend/vue-ui && npm run lint && npm run typecheck

@@ -13,12 +13,18 @@ import (
 )
 
 type authUsecase struct {
-	userRepo user.Repository
-	secret   []byte
+	userRepo  user.Repository
+	secret    []byte
+	dummyHash []byte
 }
 
 func NewUsecase(userRepo user.Repository, secret []byte) auth.Usecase {
-	return &authUsecase{userRepo: userRepo, secret: secret}
+	// Compare against a real hash even for missing accounts to reduce timing leaks.
+	dummyHash, err := bcrypt.GenerateFromPassword([]byte("unused-account-password"), bcrypt.DefaultCost)
+	if err != nil {
+		panic(err)
+	}
+	return &authUsecase{userRepo: userRepo, secret: secret, dummyHash: dummyHash}
 }
 
 func (u *authUsecase) Register(ctx context.Context, name, email, password string) error {
@@ -40,8 +46,14 @@ func (u *authUsecase) Register(ctx context.Context, name, email, password string
 }
 
 func (u *authUsecase) Login(ctx context.Context, email, password string) (string, error) {
+	email, err := user.NormalizeEmail(email)
+	// Existing shorter passwords remain usable; new passwords require 8 bytes.
+	if err != nil || !user.ValidPassword(password, 1) {
+		return "", errors.New("invalid email or password")
+	}
 	usr, err := u.userRepo.GetByEmail(ctx, email)
 	if err != nil {
+		_ = bcrypt.CompareHashAndPassword(u.dummyHash, []byte(password))
 		return "", errors.New("invalid email or password")
 	}
 

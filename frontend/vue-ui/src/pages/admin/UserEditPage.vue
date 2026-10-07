@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/vue-query'
 import { useUserQuery } from '../../queries/users'
 import { usersApi, type UserInput } from '../../api/users'
 import { userError } from '../../api/errors'
+import { ApiError } from '../../api/client'
 import { useSessionStore } from '../../stores/session'
 import { useFeedbackStore } from '../../stores/feedback'
 import UsersBreadcrumbs from '../../components/users/UsersBreadcrumbs.vue'
@@ -22,11 +23,13 @@ const query = useUserQuery(() => String(route.params.id))
 const user = computed(() => query.data.value?.data)
 const busy = ref(false)
 const error = ref('')
+const retryAfter = ref(0)
 
 async function update(input: UserInput) {
   if (busy.value || !user.value) return
   busy.value = true
   error.value = ''
+  retryAfter.value = 0
   try {
     const response = await usersApi.update(user.value.id, input, session.token)
     queryClient.setQueryData(['users', response.data.id], response)
@@ -35,6 +38,7 @@ async function update(input: UserInput) {
     feedback.message = `${response.data.name} was updated.`
     await router.push(`/admin/users/${response.data.id}`)
   } catch (err) {
+    if (err instanceof ApiError && err.status === 429) retryAfter.value = err.retryAfter
     error.value = userError(err, 'Could not save changes. Please try again.')
   } finally { busy.value = false }
 }
@@ -56,7 +60,7 @@ async function update(input: UserInput) {
     <p v-if="query.isFetching.value" class="mb-4 flex items-center gap-2 text-sm text-base-content/65" role="status">
       <span class="loading loading-spinner loading-xs" aria-hidden="true"></span>Updating user…
     </p>
-    <UserForm :initial="user" editing :lock-email="user.is_admin" :busy="busy" :error="error" submit-label="Save changes" @submit="update">
+    <UserForm :initial="user" editing :lock-email="user.is_admin" :busy="busy" :error="error" :retry-after="retryAfter" submit-label="Save changes" @submit="update">
       <template #actions><RouterLink v-if="!busy" :to="`/admin/users/${user.id}`" class="btn btn-ghost">Cancel</RouterLink></template>
     </UserForm>
   </template>

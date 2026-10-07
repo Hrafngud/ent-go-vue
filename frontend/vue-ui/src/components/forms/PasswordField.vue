@@ -19,7 +19,7 @@ const visible = ref(false)
     <label :for="id" class="block text-sm font-medium">{{ label }}</label>
     <div class="password-input">
       <input :id="id" v-model="model" :name="id" :type="visible ? 'text' : 'password'" class="input w-full"
-        :autocomplete="autocomplete" :disabled="disabled" :required="required" :minlength="minLength"
+        :autocomplete="autocomplete" :disabled="disabled" :required="required" :minlength="minLength" maxlength="72"
         :aria-describedby="hint ? `${id}-hint` : undefined" />
       <button class="password-toggle btn btn-ghost btn-sm gap-1 text-base-content/60" type="button" :disabled="disabled" :aria-controls="id" :aria-pressed="visible"
         :aria-label="`${visible ? 'Hide' : 'Show'} ${label.toLowerCase()}`" @click="visible = !visible">

@@ -18,9 +18,10 @@ import (
 )
 
 // New wires the existing feature modules into the public /api namespace.
-func New(client *ent.Client, db *sql.DB, secret []byte, rootEmail string) http.Handler {
+func New(client *ent.Client, db *sql.DB, secret []byte, rootEmail string, options ...SecurityOptions) http.Handler {
 	router := http.NewServeMux()
 	config := huma.DefaultConfig("Ent Go Vue API", "1.0.0")
+	config.RejectUnknownQueryParameters = true
 	config.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 		"bearerAuth": {Type: "http", Scheme: "bearer", BearerFormat: "JWT"},
 	}
@@ -28,10 +29,13 @@ func New(client *ent.Client, db *sql.DB, secret []byte, rootEmail string) http.H
 	repo := userrepo.NewEntRepository(client)
 	authhttp.RegisterRoutes(api, authuc.NewUsecase(repo, secret))
 	userhttp.RegisterMyUserRoutes(api, useruc.NewMyUsecase(repo, rootEmail), secret)
-	userhttp.RegisterPublicUserRoutes(api, useruc.NewPublicUsecase(repo))
 	userhttp.RegisterAdminUserRoutes(api, useruc.NewAdminUsecase(repo, rootEmail), secret)
 	registerHealth(api, db.PingContext)
-	return router
+	var securityOptions SecurityOptions
+	if len(options) > 0 {
+		securityOptions = options[0]
+	}
+	return secureHandler(router, securityOptions)
 }
 
 type healthResponse struct {

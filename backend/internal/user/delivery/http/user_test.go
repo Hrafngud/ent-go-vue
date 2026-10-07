@@ -75,7 +75,7 @@ func TestUserAndAuthAPI_Integration(t *testing.T) {
 	defer ts.Close()
 
 	t.Run("Health and database readiness", func(t *testing.T) {
-		for _, path := range []string{"/api/health", "/api/ready", "/api/openapi.json", "/api/users"} {
+		for _, path := range []string{"/api/health", "/api/ready", "/api/openapi.json"} {
 			resp, err := http.Get(ts.URL + path)
 			if err != nil {
 				t.Fatal(err)
@@ -230,40 +230,27 @@ func TestUserAndAuthAPI_Integration(t *testing.T) {
 		}
 	})
 
-	t.Run("Get User Detail (Public)", func(t *testing.T) {
+	t.Run("User Detail is not Public", func(t *testing.T) {
 		resp, err := http.Get(ts.URL + "/api/users/" + userID.String())
 		if err != nil {
 			t.Fatalf("failed to make GET request: %v", err)
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("expected status OK, got %d", resp.StatusCode)
-		}
-
-		var detailResp struct {
-			Data struct {
-				ID    uuid.UUID `json:"id"`
-				Email string    `json:"email"`
-			} `json:"data"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&detailResp); err != nil {
-			t.Fatalf("failed to decode get response: %v", err)
-		}
-		if detailResp.Data.Email != "auth@test.com" {
-			t.Errorf("expected email auth@test.com, got %s", detailResp.Data.Email)
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("expected 404 for removed public directory, got %d", resp.StatusCode)
 		}
 	})
 
-	t.Run("List Users (Public)", func(t *testing.T) {
+	t.Run("Users List is not Public", func(t *testing.T) {
 		resp, err := http.Get(ts.URL + "/api/users")
 		if err != nil {
 			t.Fatalf("failed to make GET request: %v", err)
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("expected status OK, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("expected 404 for removed public directory, got %d", resp.StatusCode)
 		}
 	})
 
@@ -273,6 +260,9 @@ func TestUserAndAuthAPI_Integration(t *testing.T) {
 			payload, err := json.Marshal(body)
 			if err != nil {
 				t.Fatal(err)
+			}
+			if body == nil {
+				payload = []byte(`{}`)
 			}
 			req, err := http.NewRequest(method, ts.URL+"/api"+path, bytes.NewReader(payload))
 			if err != nil {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -48,4 +49,36 @@ func TestHealthAndReadiness(t *testing.T) {
 		t.Fatal("readiness leaked database error details")
 	}
 	check("/api/health", 200)
+}
+
+func TestInvalidInputsAndPrivateDirectory(t *testing.T) {
+	// No database is attached: any invalid input reaching a repository panics.
+	for _, tc := range []struct {
+		method, path, body string
+		status             int
+	}{
+		{"POST", "/api/auth/register", `{"name":"Name","email":"a@example.com","password":"password","is_admin":true}`, 422},
+		{"POST", "/api/auth/register", `{"name":"<script>","email":"a@example.com","password":"password"}`, 422},
+		{"POST", "/api/auth/register", `{"name":"Name","email":"a@example.com","password":"short"}`, 422},
+		{"POST", "/api/auth/register", `{"name":null,"email":"a@example.com","password":"password"}`, 422},
+		{"POST", "/api/auth/register", `{"name":12,"email":"a@example.com","password":"password"}`, 422},
+		{"POST", "/api/auth/login", `{"email":"invalid","password":"password"}`, 401},
+		{"POST", "/api/auth/login", `{"email":"a@example.com","password":"` + strings.Repeat("x", 73) + `"}`, 422},
+		{"POST", "/api/auth/register?is_admin=true", `{"name":"Name","email":"a@example.com","password":"password"}`, 422},
+		{"GET", "/api/users", "", 404},
+		{"GET", "/api/users/00000000-0000-0000-0000-000000000001", "", 404},
+		{"GET", "/api/admin/users", "", 401},
+		{"GET", "/api/users/me", "", 401},
+	} {
+		t.Run(tc.method+tc.path+tc.body, func(t *testing.T) {
+			handler := New(nil, nil, []byte(strings.Repeat("s", 32)), "")
+			req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+			if rec.Code != tc.status {
+				t.Fatalf("got %d, want %d: %s", rec.Code, tc.status, rec.Body.String())
+			}
+		})
+	}
 }

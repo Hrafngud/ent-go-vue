@@ -27,12 +27,9 @@ linters:
     # Existing debt only; see ../VALIDATION.md. Exact complexity values ensure
     # increases still fail. Remove each exception when its debt is addressed.
     rules:
-      - path: ^internal/config/config\.go$
-        linters: [cyclop]
-        text: '^calculated cyclomatic complexity for function Load is 24, max is 15$'
       - path: ^internal/user/delivery/http/user_test\.go$
         linters: [cyclop]
-        text: '^calculated cyclomatic complexity for function TestUserAndAuthAPI_Integration is 70, max is 15$'
+        text: '^calculated cyclomatic complexity for function TestUserAndAuthAPI_Integration is 69, max is 15$'
       - path: ^(cmd/api/main|internal/user/delivery/http/user_test)\.go$
         linters: [errcheck]
         text: '^Error return value of `client.Close` is not checked$'

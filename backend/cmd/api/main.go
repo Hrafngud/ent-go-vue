@@ -63,12 +63,12 @@ func run() error {
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           httpapi.New(client, db, cfg.JWTSecret, cfg.RootEmail),
+		Handler:           httpapi.New(client, db, cfg.JWTSecret, cfg.RootEmail, httpapi.SecurityOptions{TrustedProxyCIDRs: cfg.TrustedProxyCIDRs}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		IdleTimeout:       120 * time.Second,
-		MaxHeaderBytes:    1 << 20,
-		// No global write timeout, so streaming responses can remain open.
+		MaxHeaderBytes:    16 << 10,
+		WriteTimeout:      30 * time.Second,
 	}
 	stop, stopCancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stopCancel()
