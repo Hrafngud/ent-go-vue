@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,20 @@ type User struct {
 	Email     string    `json:"email"`
 	Password  string    `json:"-"`
 	CreatedAt time.Time `json:"created_at"`
+	IsAdmin   bool      `json:"is_admin"`
+}
+
+var (
+	ErrNotFound      = errors.New("user not found")
+	ErrEmailTaken    = errors.New("email is already in use")
+	ErrRootProtected = errors.New("the configured root account cannot be deleted or change its email")
+	ErrInvalidInput  = errors.New("provide a name, valid email, and a password between 6 and 72 bytes")
+)
+
+type UserInput struct {
+	Name     string `json:"name" minLength:"1" maxLength:"255"`
+	Email    string `json:"email" format:"email" maxLength:"255"`
+	Password string `json:"password,omitempty" maxLength:"72"`
 }
 
 type Repository interface {
@@ -21,6 +36,16 @@ type Repository interface {
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	List(ctx context.Context) ([]*User, error)
 	Delete(ctx context.Context, id uuid.UUID) error
+	Update(ctx context.Context, id uuid.UUID, u *User) (*User, error)
+}
+
+type AdminUsecase interface {
+	CanManage(ctx context.Context, id uuid.UUID) (bool, error)
+	ListUsers(ctx context.Context) ([]*User, error)
+	GetUser(ctx context.Context, id uuid.UUID) (*User, error)
+	CreateUser(ctx context.Context, input UserInput) (*User, error)
+	UpdateUser(ctx context.Context, id uuid.UUID, input UserInput) (*User, error)
+	DeleteUser(ctx context.Context, id uuid.UUID) error
 }
 
 type MyUsecase interface {

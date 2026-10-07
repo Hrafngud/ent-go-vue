@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"errors"
 
 	"backend-golang/ent"
 	entuser "backend-golang/ent/user"
@@ -30,7 +29,7 @@ func (r *entRepository) Create(ctx context.Context, u *user.User) (*user.User, e
 		Save(ctx)
 
 	if err != nil {
-		return nil, err
+		return nil, writeError(err)
 	}
 
 	return toDomainUser(entUser), nil
@@ -40,7 +39,7 @@ func (r *entRepository) GetByID(ctx context.Context, id uuid.UUID) (*user.User, 
 	entUser, err := r.client.User.Get(ctx, id)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, errors.New("user not found")
+			return nil, user.ErrNotFound
 		}
 		return nil, err
 	}
@@ -52,7 +51,7 @@ func (r *entRepository) GetByEmail(ctx context.Context, email string) (*user.Use
 	entUser, err := r.client.User.Query().Where(entuser.Email(email)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, errors.New("user not found")
+			return nil, user.ErrNotFound
 		}
 		return nil, err
 	}
@@ -78,11 +77,33 @@ func (r *entRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	err := r.client.User.DeleteOneID(id).Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return errors.New("user not found")
+			return user.ErrNotFound
 		}
 		return err
 	}
 	return nil
+}
+
+func (r *entRepository) Update(ctx context.Context, id uuid.UUID, u *user.User) (*user.User, error) {
+	update := r.client.User.UpdateOneID(id).SetName(u.Name).SetEmail(u.Email)
+	if u.Password != "" {
+		update.SetPassword(u.Password)
+	}
+	updated, err := update.Save(ctx)
+	if err != nil {
+		return nil, writeError(err)
+	}
+	return toDomainUser(updated), nil
+}
+
+func writeError(err error) error {
+	if ent.IsNotFound(err) {
+		return user.ErrNotFound
+	}
+	if ent.IsConstraintError(err) {
+		return user.ErrEmailTaken
+	}
+	return err
 }
 
 func toDomainUser(u *ent.User) *user.User {

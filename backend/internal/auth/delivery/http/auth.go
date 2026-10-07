@@ -2,18 +2,20 @@ package http
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"backend-golang/internal/auth"
+	"backend-golang/internal/user"
 
 	"github.com/danielgtaylor/huma/v2"
 )
 
 type RegisterRequest struct {
 	Body struct {
-		Name     string `json:"name" doc:"User's full name" example:"John Doe"`
+		Name     string `json:"name" doc:"User's full name" example:"John Doe" minLength:"1" maxLength:"255"`
 		Email    string `json:"email" doc:"User's email" format:"email"`
-		Password string `json:"password" doc:"User's password" minLength:"6"`
+		Password string `json:"password" doc:"User's password" minLength:"6" maxLength:"72"`
 	}
 }
 
@@ -44,7 +46,13 @@ func RegisterRoutes(api huma.API, uc auth.Usecase) {
 	}, func(ctx context.Context, input *RegisterRequest) (*RegisterResponse, error) {
 		err := uc.Register(ctx, input.Body.Name, input.Body.Email, input.Body.Password)
 		if err != nil {
-			return nil, huma.Error400BadRequest("registration failed", err)
+			if errors.Is(err, user.ErrEmailTaken) {
+				return nil, huma.Error409Conflict("email is already in use")
+			}
+			if errors.Is(err, user.ErrInvalidInput) {
+				return nil, huma.Error422UnprocessableEntity(user.ErrInvalidInput.Error())
+			}
+			return nil, huma.Error500InternalServerError("registration failed")
 		}
 		resp := &RegisterResponse{}
 		resp.Status = http.StatusCreated

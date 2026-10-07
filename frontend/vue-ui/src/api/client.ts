@@ -11,21 +11,38 @@ export class ApiError extends Error {
   }
 }
 
-export async function get<T>(path: string, signal?: AbortSignal, token?: string): Promise<T> {
+async function request<T>(path: string, method: string, body?: unknown, token?: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    method,
+    headers: {
+      Accept: 'application/json',
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
     signal,
   })
-  if (!response.ok) throw new ApiError(response.status)
-  return response.json() as Promise<T>
+  if (!response.ok) {
+    if (token && response.status === 401) window.dispatchEvent(new Event('session-expired'))
+    throw new ApiError(response.status)
+  }
+  // Registration returns an empty 201 response and deletion returns 204.
+  const text = await response.text()
+  return (text ? JSON.parse(text) : undefined) as T
 }
 
-export async function post<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!response.ok) throw new ApiError(response.status)
-  return response.json() as Promise<T>
+export function get<T>(path: string, signal?: AbortSignal, token?: string): Promise<T> {
+  return request<T>(path, 'GET', undefined, token, signal)
+}
+
+export function post<T>(path: string, body: unknown, token?: string): Promise<T> {
+  return request<T>(path, 'POST', body, token)
+}
+
+export function put<T>(path: string, body: unknown, token: string): Promise<T> {
+  return request<T>(path, 'PUT', body, token)
+}
+
+export function remove(path: string, token: string): Promise<void> {
+  return request<void>(path, 'DELETE', undefined, token)
 }

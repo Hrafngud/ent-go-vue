@@ -22,13 +22,17 @@ func NewUsecase(userRepo user.Repository, secret []byte) auth.Usecase {
 }
 
 func (u *authUsecase) Register(ctx context.Context, name, email, password string) error {
+	input, err := user.NormalizeInput(user.UserInput{Name: name, Email: email, Password: password}, true)
+	if err != nil {
+		return err
+	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 	usr := &user.User{
-		Name:     name,
-		Email:    email,
+		Name:     input.Name,
+		Email:    input.Email,
 		Password: string(hash),
 	}
 	_, err = u.userRepo.Create(ctx, usr)

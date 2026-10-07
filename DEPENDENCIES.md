@@ -34,6 +34,7 @@ Ran `npm outdated`, `npm update`, `npm audit`, `npm install`, and `npm run build
 | Direct dependency | Final installed version |
 | --- | --- |
 | Vue | 3.5.43 |
+| Vue Router | 4.6.4 (added for registration and admin page routing) |
 | Vite | 8.3.3 |
 | TypeScript | 6.0.3 |
 | Tailwind / Tailwind Vite plugin | 4.3.3 |

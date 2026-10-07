@@ -112,3 +112,16 @@ The temporary fresh-check Compose project and its test-only volume were removed.
 - `A` `frontend/vue-ui/src/components/ConnectionStatus.vue`
 - `A` `frontend/vue-ui/src/queries/health.ts`
 - `M` `frontend/vue-ui/vite.config.ts`
+
+## Registration and root user management (2026-10-07)
+
+Added routed login/registration/workspace pages under `src/pages`, admin list/create/detail/edit pages under `src/pages/admin`, and reusable daisyUI layouts, forms, alerts, and user components under `src/components`. The hierarchy and route access policy are documented in `frontend/vue-ui/README.md`.
+
+Validation passed:
+
+- Backend `go test ./...`, including PostgreSQL Testcontainers integration coverage of all root-only CRUD endpoints, 401 without authentication, 403 for members, disabled root access, duplicate email conflicts, input validation (including bcrypt byte limits), hashed passwords, password preservation/rotation, root email/deletion protection, and missing-user responses.
+- Backend `go vet ./...` and API binary build.
+- Frontend `vue-tsc` and Vite production builds, including the final responsive layout build inside Docker.
+- Headless Chromium against the rebuilt local app at `http://127.0.0.1:18080`: registration/password confirmation, empty 201 response handling, login, reload/session restoration, member route guards, real root CRUD, duplicate-email feedback, optional password preservation, password rotation, delete confirmation/cancellation, root protections, and missing-user errors.
+- Browser response interception verified pagination/sorting/search, empty lists, service error/retry recovery, and expired-session cleanup. Desktop (1280px) and mobile (375px) screenshots were inspected. Mobile users render as a stacked daisyUI list with visible View/Edit actions and full-width search; no page overflow or browser runtime errors occurred.
+- Temporary browser-test accounts were deleted afterward. Rebuilt backend/frontend/proxy and PostgreSQL services report healthy. No database schema migration was needed.

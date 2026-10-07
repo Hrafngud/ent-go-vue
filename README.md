@@ -24,8 +24,11 @@ backend/
   Dockerfile                  compiled API runtime and separate migration target
 frontend/vue-ui/
   src/api/                    relative /api HTTP client
-  src/queries/                TanStack Query health/readiness requests
-  src/components/             visible connectivity display
+  src/pages/                  routed login, registration, workspace, and admin pages
+  src/components/             reusable layouts, forms, feedback, and user UI
+  src/router/                 Vue Router routes and session/access guards
+  src/stores/                 Pinia session and feedback state
+  src/queries/                TanStack Query health/readiness and user requests
   Dockerfile                  Node build → static assets in Nginx
   nginx.conf                  frontend static serving and SPA fallback
   vite.config.ts              local /api proxy
@@ -65,7 +68,9 @@ ROOT_EMAIL=root@example.com
 ROOT_PASSWORD=replace_with_your_own_password
 ```
 
-Replace the example password with your own 8–72 byte password; example placeholders are rejected. On startup, the backend creates an account named **Root** with a bcrypt password hash, or updates the password of the account with that email while preserving its ID. To apply changes in Compose, run `docker compose up --build -d backend frontend nginx`; native development requires restarting the API. Changing `ROOT_EMAIL` provisions the new email and leaves the previous account intact. Leaving both values blank disables provisioning and preserves existing accounts. This configures a regular account; the current schema has no administrator roles or extra root privileges.
+Replace the example password with your own 8–72 byte password; example placeholders are rejected. On startup, the backend creates an account named **Root** with a bcrypt password hash, or updates the password of the account with that email while preserving its ID. To apply changes in Compose, run `docker compose up --build -d backend frontend nginx`; native development requires restarting the API. Changing `ROOT_EMAIL` provisions the new email and leaves the previous account intact. Leaving both values blank disables provisioning and administrator access while preserving existing accounts. Only the account whose stored email matches the configured `ROOT_EMAIL` can manage users. Each management request verifies the JWT and loads that account from the database; no new role column or migration is required.
+
+Use **Create an account** on the login page to register at `/register`, then sign in. Members land at `/workspace`; the root account lands at `/admin/users`. User management includes search, sorting, pagination, creation, details, editing, optional password changes, and confirmed deletion. The root account cannot be deleted or have its email changed through the API. Root password changes through the UI are overwritten by `ROOT_PASSWORD` on the next backend startup.
 
 The browser restores a signed-in session on reload using a token in tab-scoped session storage, validated against `/api/users/me`. **Sign out** clears the browser session. Tokens expire after 24 hours; password changes do not revoke already-issued tokens.
 
@@ -77,7 +82,7 @@ curl --fail http://localhost/api/users
 
 `/api/health` reports `status: ok` without database work. `/api/ready` pings PostgreSQL with a two-second timeout, reports `database: connected`, and returns 503 when the database is unavailable. `/api/users` also exercises the Ent repository against the migrated schema. Responses may include Huma's `$schema` metadata.
 
-Huma documentation and OpenAPI are available at `/api/docs` and `/api/openapi.json`. Feature routes live under `/api/auth/*` and `/api/users*` in both native and container execution.
+Huma documentation and OpenAPI are available at `/api/docs` and `/api/openapi.json`. Feature routes live under `/api/auth/*`, `/api/users*`, and `/api/admin/users*` in both native and container execution. Existing public user reads remain available; management uses the root-only admin endpoints: `GET`/`POST /api/admin/users` and `GET`/`PUT`/`DELETE /api/admin/users/{id}`. Creation returns 201, deletion returns 204, duplicate emails return 409, and non-root access returns 403. Profile responses include `is_admin` so navigation reflects server authorization.
 
 ```bash
 docker compose logs nginx frontend backend postgres migrate

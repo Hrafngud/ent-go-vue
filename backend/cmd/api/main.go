@@ -63,7 +63,7 @@ func run() error {
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           httpapi.New(client, db, cfg.JWTSecret),
+		Handler:           httpapi.New(client, db, cfg.JWTSecret, cfg.RootEmail),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		IdleTimeout:       120 * time.Second,

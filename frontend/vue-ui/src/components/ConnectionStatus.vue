@@ -13,11 +13,10 @@ function refresh() {
 </script>
 
 <template>
-  <section class="mx-auto max-w-3xl px-6 py-12" aria-labelledby="connection-title">
+  <section class="max-w-3xl border-t border-base-300 py-8" aria-labelledby="connection-title">
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <p class="text-sm font-medium tracking-wide text-base-content/70">ENT GO VUE</p>
-        <h1 id="connection-title" class="mt-2 text-3xl font-semibold">Connection status</h1>
+        <h2 id="connection-title" class="text-2xl font-semibold">Connection status</h2>
       </div>
       <button class="btn btn-outline btn-sm" :disabled="checking" @click="refresh">
         {{ checking ? 'Checking…' : 'Check again' }}

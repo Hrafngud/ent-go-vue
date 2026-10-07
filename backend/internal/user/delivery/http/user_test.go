@@ -71,7 +71,7 @@ func TestUserAndAuthAPI_Integration(t *testing.T) {
 	}
 	defer db.Close()
 	secret := []byte("integration-test-secret-at-least-32-characters")
-	ts := httptest.NewServer(httpapi.New(client, db, secret))
+	ts := httptest.NewServer(httpapi.New(client, db, secret, "root@example.com"))
 	defer ts.Close()
 
 	t.Run("Health and database readiness", func(t *testing.T) {
@@ -264,6 +264,122 @@ func TestUserAndAuthAPI_Integration(t *testing.T) {
 
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("expected status OK, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("Root-only user management CRUD", func(t *testing.T) {
+		request := func(method, path, token string, body any, want int) []byte {
+			t.Helper()
+			payload, err := json.Marshal(body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req, err := http.NewRequest(method, ts.URL+"/api"+path, bytes.NewReader(payload))
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			if token != "" {
+				req.Header.Set("Authorization", "Bearer "+token)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+			var result bytes.Buffer
+			if _, err := result.ReadFrom(resp.Body); err != nil {
+				t.Fatal(err)
+			}
+			if resp.StatusCode != want {
+				t.Fatalf("%s %s: got %d, want %d: %s", method, path, resp.StatusCode, want, result.String())
+			}
+			return result.Bytes()
+		}
+		var login struct {
+			Token string `json:"token"`
+		}
+		if err := json.Unmarshal(request(http.MethodPost, "/auth/login", "", map[string]string{"email": "root@example.com", "password": "rotated-root-password"}, 200), &login); err != nil {
+			t.Fatal(err)
+		}
+		var profile struct {
+			Data struct {
+				ID      string `json:"id"`
+				IsAdmin bool   `json:"is_admin"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(request(http.MethodGet, "/users/me", login.Token, nil, 200), &profile); err != nil {
+			t.Fatal(err)
+		}
+		if !profile.Data.IsAdmin {
+			t.Fatal("root profile does not identify administrator access")
+		}
+		memberID := userID.String()
+		for _, op := range []struct{ method, path string }{
+			{http.MethodGet, "/admin/users"},
+			{http.MethodGet, "/admin/users/" + memberID},
+			{http.MethodPost, "/admin/users"},
+			{http.MethodPut, "/admin/users/" + memberID},
+			{http.MethodDelete, "/admin/users/" + memberID},
+		} {
+			request(op.method, op.path, "", nil, 401)
+			request(op.method, op.path, jwtToken, nil, 403)
+		}
+		request(http.MethodPost, "/admin/users", login.Token, map[string]string{"name": "Duplicate", "email": "auth@test.com", "password": "password123"}, 409)
+		request(http.MethodPost, "/auth/register", "", map[string]string{"name": "Duplicate", "email": "auth@test.com", "password": "password123"}, 409)
+		for _, body := range []map[string]string{
+			{"name": " ", "email": "valid@test.com", "password": "password123"},
+			{"name": "Invalid", "email": "invalid", "password": "password123"},
+			{"name": "Invalid", "email": "valid@test.com", "password": "short"},
+			{"name": "Invalid", "email": "valid@test.com", "password": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"},
+		} {
+			request(http.MethodPost, "/admin/users", login.Token, body, 422)
+		}
+
+		var created struct {
+			Data struct {
+				ID    string `json:"id"`
+				Name  string `json:"name"`
+				Email string `json:"email"`
+			} `json:"data"`
+		}
+		body := request(http.MethodPost, "/admin/users", login.Token, map[string]string{"name": " Managed User ", "email": " managed@test.com ", "password": "initial-password"}, 201)
+		if bytes.Contains(body, []byte("password")) {
+			t.Fatal("password leaked in creation response")
+		}
+		if err := json.Unmarshal(body, &created); err != nil {
+			t.Fatal(err)
+		}
+		if created.Data.Name != "Managed User" || created.Data.Email != "managed@test.com" {
+			t.Fatal("input was not normalized")
+		}
+		id := created.Data.ID
+		request(http.MethodGet, "/admin/users/"+id, login.Token, nil, 200)
+		request(http.MethodGet, "/admin/users", login.Token, nil, 200)
+		request(http.MethodPut, "/admin/users/"+id, login.Token, map[string]string{"name": "Renamed User", "email": "renamed@test.com"}, 200)
+		request(http.MethodPost, "/auth/login", "", map[string]string{"email": "renamed@test.com", "password": "initial-password"}, 200)
+		request(http.MethodPut, "/admin/users/"+id, login.Token, map[string]string{"name": "Renamed User", "email": "auth@test.com"}, 409)
+		request(http.MethodPut, "/admin/users/"+id, login.Token, map[string]string{"name": "Renamed User", "email": "renamed@test.com", "password": "rotated-password"}, 200)
+		request(http.MethodPost, "/auth/login", "", map[string]string{"email": "renamed@test.com", "password": "initial-password"}, 401)
+		request(http.MethodPost, "/auth/login", "", map[string]string{"email": "renamed@test.com", "password": "rotated-password"}, 200)
+		stored, err := client.User.Get(ctx, uuid.MustParse(id))
+		if err != nil || bcrypt.CompareHashAndPassword([]byte(stored.Password), []byte("rotated-password")) != nil {
+			t.Fatal("password was not hashed")
+		}
+		request(http.MethodDelete, "/admin/users/"+profile.Data.ID, login.Token, nil, 403)
+		request(http.MethodPut, "/admin/users/"+profile.Data.ID, login.Token, map[string]string{"name": "Root", "email": "other-root@test.com"}, 403)
+		request(http.MethodDelete, "/admin/users/"+id, login.Token, nil, 204)
+		request(http.MethodGet, "/admin/users/"+id, login.Token, nil, 404)
+		request(http.MethodPut, "/admin/users/"+id, login.Token, map[string]string{"name": "Deleted", "email": "deleted@test.com"}, 404)
+		request(http.MethodDelete, "/admin/users/"+id, login.Token, nil, 404)
+
+		// Disabling ROOT_EMAIL must deny even a valid root session.
+		disabled := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/api/admin/users", nil)
+		req.Header.Set("Authorization", "Bearer "+login.Token)
+		httpapi.New(client, db, secret, "").ServeHTTP(disabled, req)
+		if disabled.Code != http.StatusForbidden {
+			t.Fatalf("disabled root policy returned %d", disabled.Code)
 		}
 	})
 }
