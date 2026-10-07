@@ -122,12 +122,9 @@
     letter-spacing: -0.035em;
   }
 
-  .password-input {
-    position: relative;
-  }
-
-  .password-input > .input {
-    padding-right: 6rem;
+  .formkit-outer[data-invalid] .input,
+  .formkit-outer[data-errors] .input {
+    border-color: var(--color-error);
   }
 
   .password-toggle {
@@ -135,6 +132,19 @@
     top: 50%;
     right: 0.25rem;
     transform: translateY(-50%);
+  }
+
+  .user-modal {
+    overscroll-behavior: contain;
+  }
+
+  html:has(.user-modal[open]) {
+    overflow: hidden;
+  }
+
+  .user-modal .modal-box {
+    max-height: calc(100dvh - 2rem);
+    overscroll-behavior: contain;
   }
 
   @media (width >= 64rem) {

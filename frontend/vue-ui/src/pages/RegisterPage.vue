@@ -29,7 +29,7 @@ async function register(input: UserInput) {
 
 <template>
   <AuthLayout title="Your space awaits." description="Create an account to get started.">
-    <UserForm :busy="busy" :error="error" :retry-after="retryAfter" submit-label="Create account" busy-label="Creating account…" confirm-password @submit="register" />
+    <UserForm :busy="busy" :error="error" :retry-after="retryAfter" submit-label="Create account" busy-label="Creating account…" confirm-password :save="register" />
     <p class="mt-8 border-t border-base-300 pt-6 text-center text-sm text-base-content/65">Already a member? <RouterLink class="link link-primary link-hover" to="/login">Sign in</RouterLink></p>
   </AuthLayout>
 </template>

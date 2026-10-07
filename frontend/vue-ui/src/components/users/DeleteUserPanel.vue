@@ -1,27 +1,27 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useQueryClient } from '@tanstack/vue-query'
-import { usersApi, type User } from '../../api/users'
+import type { User } from '../../api/users'
+import { useDeleteUserMutation } from '../../queries/users'
 import { userError } from '../../api/errors'
-import { useSessionStore } from '../../stores/session'
 import { useFeedbackStore } from '../../stores/feedback'
 import FeedbackAlert from '../ui/FeedbackAlert.vue'
 
 const props = defineProps<{ user: User }>()
+const emit = defineEmits<{ busy: [value: boolean] }>()
 const open = ref(false)
-const busy = ref(false)
-const error = ref('')
+const mutation = useDeleteUserMutation()
+const busy = mutation.isPending
+const error = computed(() => mutation.error.value ? userError(mutation.error.value, 'Could not delete this user. Please try again.') : '')
+watch(busy, value => emit('busy', value), { flush: 'sync' })
 const confirmButton = ref<HTMLButtonElement>()
 const deleteButton = ref<HTMLButtonElement>()
-const session = useSessionStore()
 const feedback = useFeedbackStore()
 const router = useRouter()
-const queryClient = useQueryClient()
 
 async function toggle(value: boolean) {
   open.value = value
-  error.value = ''
+  mutation.reset()
   await nextTick()
   const button = value ? confirmButton.value : deleteButton.value
   button?.focus()
@@ -29,17 +29,11 @@ async function toggle(value: boolean) {
 
 async function deleteUser() {
   if (busy.value) return
-  busy.value = true
-  error.value = ''
   try {
-    await usersApi.delete(props.user.id, session.token)
-    queryClient.removeQueries({ queryKey: ['users', props.user.id] })
-    void queryClient.invalidateQueries({ queryKey: ['users'] })
+    await mutation.mutateAsync(props.user.id)
     feedback.message = `${props.user.name} was deleted.`
     await router.push('/admin/users')
-  } catch (err) {
-    error.value = userError(err, 'Could not delete this user. Please try again.')
-  } finally { busy.value = false }
+  } catch { /* The mutation retains the error for the confirmation panel. */ }
 }
 </script>
 

@@ -9,8 +9,10 @@ import FeedbackAlert from './components/ui/FeedbackAlert.vue'
 
 const route = useRoute()
 function reload() { window.location.reload() }
-watch(() => route.fullPath, async () => {
+watch(() => [route.fullPath, route.meta.modal] as const, async ([, modal], [, previousModal]) => {
   await nextTick()
+  if (modal) return
+  if (previousModal && document.activeElement instanceof HTMLElement && document.activeElement !== document.body) return
   document.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
 })
 </script>
@@ -35,7 +37,7 @@ watch(() => route.fullPath, async () => {
         <button class="btn btn-primary btn-sm mt-3" @click="reload">Reload page</button>
       </div>
       <AppShell v-if="route.meta.authenticated || route.meta.admin">
-        <RouterView :key="route.path" />
+        <RouterView :key="route.matched[0]?.path" />
       </AppShell>
       <RouterView v-else :key="route.path" />
     </template>

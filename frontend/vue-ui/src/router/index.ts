@@ -12,13 +12,17 @@ export const router = createRouter({
     { path: '/login', name: 'login', component: () => import('../pages/LoginPage.vue'), meta: { title: 'Sign in', guest: true } },
     { path: '/register', name: 'register', component: () => import('../pages/RegisterPage.vue'), meta: { title: 'Create account', guest: true } },
     { path: '/workspace', component: () => import('../pages/WorkspacePage.vue'), meta: { title: 'Workspace', authenticated: true } },
-    { path: '/admin/users', name: 'users', component: () => import('../pages/admin/UsersPage.vue'), meta: { title: 'Users', admin: true } },
-    { path: '/admin/users/new', name: 'user-create', component: () => import('../pages/admin/UserCreatePage.vue'), meta: { title: 'Create user', admin: true } },
-    { path: '/admin/users/:id/edit', name: 'user-edit', component: () => import('../pages/admin/UserEditPage.vue'), meta: { title: 'Edit user', admin: true } },
-    { path: '/admin/users/:id', name: 'user-detail', component: () => import('../pages/admin/UserDetailPage.vue'), meta: { title: 'User details', admin: true } },
+    {
+      path: '/admin/users', name: 'users', component: () => import('../pages/admin/UsersPage.vue'), meta: { title: 'Users', admin: true },
+      children: [
+        { path: 'new', name: 'user-create', component: () => import('../components/users/UserEditorModal.vue'), meta: { title: 'Create user', modal: true } },
+        { path: ':id/edit', name: 'user-edit', component: () => import('../components/users/UserEditorModal.vue'), props: { editing: true }, meta: { title: 'Edit user', modal: true } },
+        { path: ':id', name: 'user-detail', component: () => import('../components/users/UserDetailModal.vue'), meta: { title: 'User details', modal: true } },
+      ],
+    },
     { path: '/:pathMatch(.*)*', component: () => import('../pages/NotFoundPage.vue'), meta: { title: 'Page not found' } },
   ],
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior: (to, from, savedPosition) => to.matched[0]?.path === from.matched[0]?.path ? false : savedPosition || { top: 0 },
 })
 
 router.beforeEach(async (to) => {

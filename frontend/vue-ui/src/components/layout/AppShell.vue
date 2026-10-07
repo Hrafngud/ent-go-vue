@@ -52,7 +52,7 @@ function signOut() {
     </header>
     <main id="main-content" class="w-full min-w-0 px-2 py-3 sm:px-3 lg:px-4 lg:py-4">
       <FeedbackAlert v-if="feedback.message" class="mb-6" kind="success" :message="feedback.message" dismissible @dismiss="feedback.clear" />
-      <div :key="$route.path" class="page-enter"><slot /></div>
+      <div :key="$route.matched[0]?.path" class="page-enter"><slot /></div>
     </main>
   </div>
 </template>

@@ -1,6 +1,8 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
+import { plugin as formkitPlugin, defaultConfig } from '@formkit/vue'
+import { formkitOptions } from './forms/formkit'
 import { router } from './router'
 import { useSessionStore } from './stores/session'
 import { useFeedbackStore } from './stores/feedback'
@@ -13,6 +15,7 @@ const app = createApp(App)
 app.use(createPinia())
 const queryClient = new QueryClient()
 app.use(VueQueryPlugin, { queryClient })
+app.use(formkitPlugin, defaultConfig(formkitOptions))
 app.use(router)
 
 window.addEventListener('session-expired', () => {

@@ -27,11 +27,15 @@ export function passwordError(password: string, minimum = 8): string {
 }
 
 export function accountError(input: UserInput, editing = false): string {
-  const normalized = normalizeAccount(input)
-  if (!validUnicode(input.name) || !normalized.name || encoder.encode(normalized.name).length > 255 || /[<>\p{Cc}]/u.test(normalized.name)) {
+  return nameError(input.name) || emailError(input.email) || ((!editing || input.password) ? passwordError(input.password || '') : '')
+}
+
+export function nameError(value: string): string {
+  const name = trim(value).normalize('NFC')
+  if (!validUnicode(value) || !name || encoder.encode(name).length > 255 || /[<>\p{Cc}]/u.test(name)) {
     return 'Enter a plain-text name up to 255 bytes, without angle brackets or control characters.'
   }
-  return emailError(input.email) || ((!editing || input.password) ? passwordError(input.password || '') : '')
+  return ''
 }
 
 export function normalizeLogin(email: string): string { return trim(email) }

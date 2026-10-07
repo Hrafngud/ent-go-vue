@@ -17,6 +17,8 @@
     "duplication": "jscpd --config .jscpd.json"
   },
   "dependencies": {
+    "@formkit/core": "^2.1.2",
+    "@formkit/vue": "^2.1.2",
     "@phosphor-icons/vue": "^2.2.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/vue-query": "^5.104.1",

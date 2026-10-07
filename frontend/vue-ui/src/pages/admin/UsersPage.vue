@@ -89,4 +89,5 @@ watch(pageCount, count => { page.value = Math.min(page.value, count) })
       </div>
     </template>
   </section>
+  <RouterView :key="$route.path" />
 </template>
