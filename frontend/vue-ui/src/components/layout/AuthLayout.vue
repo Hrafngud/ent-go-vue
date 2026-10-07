@@ -27,30 +27,33 @@ defineProps<{ title: string; description?: string; eyebrow?: string; split?: boo
 <style scoped>
 .auth-split {
   --auth-gutter: clamp(1.25rem, 5vw, 6rem);
+  position: relative;
+  isolation: isolate;
   overflow: clip;
 }
 
 .auth-split .auth-header {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
   padding: 2rem var(--auth-gutter);
 }
 
 .auth-composition {
   position: relative;
-  isolation: isolate;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  align-content: start;
-  gap: clamp(3rem, 8vw, 9rem);
+  grid-template-columns: minmax(0, 1fr) clamp(24rem, 36vw, 38rem);
   flex: 1;
   width: 100%;
-  max-width: 100rem;
-  margin-inline: auto;
-  padding: clamp(3rem, 6vh, 5rem) var(--auth-gutter) 5rem;
+  min-height: 100dvh;
 }
 
 .auth-intro {
   position: relative;
   z-index: 1;
+  min-width: 0;
+  padding: clamp(8rem, 16vh, 12rem) var(--auth-gutter) 3rem;
 }
 
 .auth-rule {
@@ -62,10 +65,13 @@ defineProps<{ title: string; description?: string; eyebrow?: string; split?: boo
 }
 
 .auth-intro .auth-title {
-  max-width: 7ch;
-  font-size: clamp(5rem, 8.5vw, 8.5rem);
-  line-height: 0.96;
-  letter-spacing: -0.045em;
+  font-family: var(--font-sans);
+  font-size: clamp(2.25rem, 5.2vw, 6.5rem);
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.055em;
+  white-space: nowrap;
 }
 
 .auth-description {
@@ -78,20 +84,22 @@ defineProps<{ title: string; description?: string; eyebrow?: string; split?: boo
 .hexagon-mesh {
   position: absolute;
   z-index: -1;
-  top: 3rem;
-  left: 23%;
-  width: min(58vw, 54rem);
+  inset-block: 0;
+  left: 12%;
+  width: 64%;
+  height: 100%;
   color: var(--color-primary);
   pointer-events: none;
 }
 
 .auth-panel {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   width: 100%;
-  margin-top: clamp(8rem, 12vw, 12rem);
-  padding: clamp(1.75rem, 3vw, 3rem);
-  border: 1px solid var(--color-base-300);
-  border-radius: 1rem;
+  min-height: 100dvh;
+  padding: clamp(2rem, 4vw, 4rem);
   background: var(--color-base-200);
 }
 
@@ -106,17 +114,7 @@ defineProps<{ title: string; description?: string; eyebrow?: string; split?: boo
 }
 
 @media (width < 64rem) {
-  .auth-composition {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 2rem;
-  }
-
-  .auth-intro .auth-title {
-    font-size: clamp(4.5rem, 9vw, 6rem);
-  }
-
   .auth-panel {
-    margin-top: 8rem;
     padding: 1.75rem;
   }
 }
@@ -128,12 +126,15 @@ defineProps<{ title: string; description?: string; eyebrow?: string; split?: boo
 
   .auth-composition {
     grid-template-columns: minmax(0, 1fr);
-    gap: 3rem;
-    padding-block: 2rem 3rem;
+    grid-template-rows: auto 1fr;
+  }
+
+  .auth-intro {
+    padding: 7rem var(--auth-gutter) 3rem;
   }
 
   .auth-intro .auth-title {
-    font-size: clamp(4rem, 14vw, 6rem);
+    font-size: clamp(1.75rem, 7.8vw, 3.5rem);
   }
 
   .auth-rule {
@@ -145,15 +146,15 @@ defineProps<{ title: string; description?: string; eyebrow?: string; split?: boo
   }
 
   .hexagon-mesh {
-    top: -2rem;
-    left: 24%;
-    width: 32rem;
+    left: 0;
+    width: 100%;
+    height: 100dvh;
     opacity: 0.6;
   }
 
   .auth-panel {
-    margin-top: 0;
-    padding: 1.5rem;
+    min-height: auto;
+    padding: 3rem var(--auth-gutter);
   }
 }
 </style>

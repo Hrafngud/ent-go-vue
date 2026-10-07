@@ -31,20 +31,23 @@ const mesh = [...edges.values()].join('')
 </script>
 
 <template>
-  <svg class="hexagon-mesh" viewBox="0 0 740 720" fill="none" aria-hidden="true" focusable="false">
+  <svg class="hexagon-mesh" viewBox="0 0 740 720" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden="true" focusable="false">
     <defs>
-      <radialGradient id="login-mesh-fade" cx="48%" cy="48%" r="52%">
-        <stop offset="0" stop-color="white" />
-        <stop offset="0.5" stop-color="white" stop-opacity="0.7" />
+      <linearGradient id="login-mesh-fade" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="white" stop-opacity="0" />
+        <stop offset="0.35" stop-color="white" stop-opacity="0.7" />
+        <stop offset="0.65" stop-color="white" />
         <stop offset="1" stop-color="white" stop-opacity="0" />
-      </radialGradient>
+      </linearGradient>
       <mask id="login-mesh-mask">
         <rect width="740" height="720" fill="url(#login-mesh-fade)" />
       </mask>
     </defs>
-    <g mask="url(#login-mesh-mask)" transform="rotate(-18 370 360)">
-      <path :d="mesh" stroke="currentColor" stroke-width="0.8" opacity="0.18" />
-      <path v-for="cell in accents" :key="cell" :d="cell" fill="currentColor" fill-opacity="0.035" stroke="currentColor" stroke-width="1.1" opacity="0.5" />
+    <g mask="url(#login-mesh-mask)">
+      <g transform="rotate(-18 370 360)">
+        <path :d="mesh" stroke="currentColor" stroke-width="0.8" opacity="0.18" />
+        <path v-for="cell in accents" :key="cell" :d="cell" fill="currentColor" fill-opacity="0.035" stroke="currentColor" stroke-width="1.1" opacity="0.5" />
+      </g>
     </g>
   </svg>
 </template>
