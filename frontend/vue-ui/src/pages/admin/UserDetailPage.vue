@@ -22,13 +22,20 @@ const user = computed(() => query.data.value?.data)
   <PageHeader title="User details">
     <RouterLink v-if="user" :to="`/admin/users/${user.id}/edit`" class="btn btn-primary"><PhPencilSimple :size="20" aria-hidden="true" />Edit user</RouterLink>
   </PageHeader>
-  <LoadingState v-if="query.isPending.value" label="Loading user…" />
-  <div v-else-if="query.isError.value" class="space-y-4">
+  <LoadingState v-if="query.isPending.value" variant="detail" label="Loading user…" />
+  <div v-else-if="query.isError.value && !user" class="space-y-4">
     <FeedbackAlert :message="userError(query.error.value, 'Could not load this user. Please try again.')" />
-    <button class="btn btn-outline" :disabled="query.isFetching.value" @click="query.refetch()">Try again</button>
+    <button class="btn btn-outline" :disabled="query.isFetching.value" @click="query.refetch()">
+      <span v-if="query.isFetching.value" class="loading loading-spinner loading-xs" aria-hidden="true"></span>
+      {{ query.isFetching.value ? 'Retrying…' : 'Try again' }}
+    </button>
   </div>
   <template v-else-if="user">
     <div class="max-w-3xl">
+      <FeedbackAlert v-if="query.isError.value" class="mb-4" message="Could not refresh this user. Showing the last loaded details." />
+      <p v-if="query.isFetching.value" class="mb-4 flex items-center gap-2 text-sm text-base-content/65" role="status">
+        <span class="loading loading-spinner loading-xs" aria-hidden="true"></span>Updating user…
+      </p>
       <section class="surface p-6 sm:p-8" aria-label="Account details">
         <div class="flex items-center gap-4 border-b border-base-300 pb-6">
           <UserAvatar :name="user.name" size="lg" />

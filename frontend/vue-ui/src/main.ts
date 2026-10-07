@@ -24,4 +24,4 @@ window.addEventListener('session-expired', () => {
   void router.replace({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
 })
 
-void router.isReady().then(() => app.mount('#app'))
+app.mount('#app')

@@ -48,6 +48,7 @@ async function signIn() {
         <span v-if="busy" class="loading loading-spinner loading-sm" aria-hidden="true"></span>
         {{ busy ? 'Signing in…' : 'Sign in' }}
       </button>
+      <span v-if="busy" class="sr-only" role="status">Signing in…</span>
     </form>
     <p class="mt-8 border-t border-base-300 pt-6 text-center text-sm text-base-content/65">New here? <RouterLink class="link link-primary link-hover" to="/register">Create an account</RouterLink></p>
   </AuthLayout>

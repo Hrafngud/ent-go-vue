@@ -10,9 +10,10 @@ const props = withDefaults(defineProps<{
   busy: boolean
   error: string
   submitLabel: string
+  busyLabel?: string
   confirmPassword?: boolean
   lockEmail?: boolean
-}>(), { editing: false, confirmPassword: false })
+}>(), { editing: false, confirmPassword: false, busyLabel: 'Saving…' })
 const emit = defineEmits<{ submit: [input: UserInput] }>()
 const fields = reactive({ name: props.initial?.name || '', email: props.initial?.email || '', password: '' })
 const confirmation = ref('')
@@ -62,8 +63,9 @@ function submit() {
       <slot name="actions" :busy="busy" />
       <button type="submit" class="btn btn-primary" :class="{ 'w-full': confirmPassword }" :disabled="busy">
         <span v-if="busy" class="loading loading-spinner loading-sm" aria-hidden="true"></span>
-        {{ busy ? 'Saving…' : submitLabel }}
+        {{ busy ? busyLabel : submitLabel }}
       </button>
+      <span v-if="busy" class="sr-only" role="status">{{ busyLabel }}</span>
     </div>
   </form>
 </template>

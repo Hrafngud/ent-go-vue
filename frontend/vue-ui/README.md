@@ -49,7 +49,7 @@ src/
       UsersPage.vue, UserCreatePage.vue, UserDetailPage.vue, UserEditPage.vue
   components/
     layout/       BrandMark, AuthLayout, AppShell
-    forms/        PasswordField
+    forms/        PasswordField, CustomSelect
     ui/           PageHeader, LoadingState, FeedbackAlert
     users/        UserForm, UserTable, UserIdentity, UserAvatar, UserActions,
                   UsersBreadcrumbs, DeleteUserPanel
@@ -74,6 +74,8 @@ The hierarchy is `App → route page → reusable components` for public screens
 The root account is identified by the backend's `ROOT_EMAIL`; `is_admin` in `/api/users/me` controls navigation. The backend independently authorizes every admin request. Expired tokens clear the session and query cache and return to login. Registration handles an empty 201 response and returns to login with the email prefilled. Admin forms validate password byte limits, preserve existing passwords when left blank, and show duplicate-email errors. Root email editing and deletion are disabled and rejected by the API.
 
 `src/queries/health.ts` owns the server health/readiness state. `ConnectionStatus.vue` displays API and database connectivity, loading/errors, and a refresh action. `src/queries/users.ts` owns user reads; successful mutations update or invalidate cached records. Search, sorting, and pagination operate on the backend's complete user list.
+
+`LoadingState` provides responsive skeletons for the user directory, account details, and edit form. Startup renders while the session restores, and lazy route changes show an indeterminate progress bar. Background refreshes retain cached user data. `CustomSelect` uses daisyUI dropdown/menu styling with arrow, Home/End, Enter/Space, Escape, Tab, and type-ahead support for the directory sort control.
 
 The production `frontend` service builds static assets and serves them with an unprivileged Nginx runtime using this directory's `nginx.conf`. Its Dockerfile's build context is `frontend/vue-ui`. The separate root Compose `nginx` service proxies `/` to this container and `/api/` to the backend, publishing one application port. Vite is used only for development.
 

@@ -1,5 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ref } from 'vue'
 import { useSessionStore } from '../stores/session'
+
+export const navigationPending = ref(true)
+export const navigationError = ref(false)
 
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -18,6 +22,8 @@ export const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  navigationPending.value = true
+  navigationError.value = false
   const session = useSessionStore()
   await session.restore()
   if ((to.meta.authenticated || to.meta.admin) && !session.user) {
@@ -28,5 +34,11 @@ router.beforeEach(async (to) => {
 })
 
 router.afterEach((to) => {
+  navigationPending.value = false
   document.title = `${to.meta.title || 'Workspace'} · Ent Go Vue`
+})
+
+router.onError(() => {
+  navigationPending.value = false
+  navigationError.value = true
 })

@@ -62,6 +62,7 @@ async function deleteUser() {
             {{ busy ? 'Deleting…' : 'Yes, delete user' }}
           </button>
           <button class="btn btn-ghost btn-sm" :disabled="busy" @click="toggle(false)">Cancel</button>
+          <span v-if="busy" class="sr-only" role="status">Deleting user…</span>
         </div>
       </div>
     </template>

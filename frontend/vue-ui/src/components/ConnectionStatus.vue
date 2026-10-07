@@ -7,8 +7,8 @@ const health = useHealthQuery()
 const readiness = useReadinessQuery()
 const checking = computed(() => health.isFetching.value || readiness.isFetching.value)
 const connections = computed(() => [
-  { name: 'Backend', icon: PhCloud, pending: health.isPending.value, error: health.isError.value, connected: health.data.value?.status === 'ok' },
-  { name: 'Database', icon: PhDatabase, pending: readiness.isPending.value, error: readiness.isError.value, connected: readiness.data.value?.database === 'connected' },
+  { name: 'Backend', icon: PhCloud, pending: health.isFetching.value || health.isPending.value, error: health.isError.value, connected: health.data.value?.status === 'ok' },
+  { name: 'Database', icon: PhDatabase, pending: readiness.isFetching.value || readiness.isPending.value, error: readiness.isError.value, connected: readiness.data.value?.database === 'connected' },
 ])
 
 function refresh() {

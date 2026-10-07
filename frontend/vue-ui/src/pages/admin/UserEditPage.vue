@@ -43,12 +43,21 @@ async function update(input: UserInput) {
 <template>
   <UsersBreadcrumbs label="Edit user" />
   <PageHeader title="Edit user" :description="user?.name" />
-  <LoadingState v-if="query.isPending.value" label="Loading user…" />
-  <div v-else-if="query.isError.value" class="space-y-4">
+  <LoadingState v-if="query.isPending.value" variant="form" label="Loading user…" />
+  <div v-else-if="query.isError.value && !user" class="space-y-4">
     <FeedbackAlert :message="userError(query.error.value, 'Could not load this user. Please try again.')" />
-    <button class="btn btn-outline" :disabled="query.isFetching.value" @click="query.refetch()">Try again</button>
+    <button class="btn btn-outline" :disabled="query.isFetching.value" @click="query.refetch()">
+      <span v-if="query.isFetching.value" class="loading loading-spinner loading-xs" aria-hidden="true"></span>
+      {{ query.isFetching.value ? 'Retrying…' : 'Try again' }}
+    </button>
   </div>
-  <UserForm v-else-if="user" :initial="user" editing :lock-email="user.is_admin" :busy="busy" :error="error" submit-label="Save changes" @submit="update">
-    <template #actions><RouterLink v-if="!busy" :to="`/admin/users/${user.id}`" class="btn btn-ghost">Cancel</RouterLink></template>
-  </UserForm>
+  <template v-else-if="user">
+    <FeedbackAlert v-if="query.isError.value" class="mb-4 max-w-3xl" message="Could not refresh this user. Showing the last loaded details." />
+    <p v-if="query.isFetching.value" class="mb-4 flex items-center gap-2 text-sm text-base-content/65" role="status">
+      <span class="loading loading-spinner loading-xs" aria-hidden="true"></span>Updating user…
+    </p>
+    <UserForm :initial="user" editing :lock-email="user.is_admin" :busy="busy" :error="error" submit-label="Save changes" @submit="update">
+      <template #actions><RouterLink v-if="!busy" :to="`/admin/users/${user.id}`" class="btn btn-ghost">Cancel</RouterLink></template>
+    </UserForm>
+  </template>
 </template>
