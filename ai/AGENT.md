@@ -8,6 +8,7 @@
 	├── errors.md
 	├── start.md
 	├── reviews.md
+	├── quality.md
 	├── history.md
 	├── next-task.md
 	└── planning.md
@@ -21,6 +22,31 @@
 	- next-task.md -> Imediate next task, constrained to task lifecycle.
 	- errors.md -> Temporary error buffer for REVIEW tasks.
 	- reviews.md -> File for storing coding reviews for insights.
+	- quality.md -> Mandatory codebase standards, architecture, and quality controls.
+
+	#CODEBASE STANDARDS
+
+	- Read and follow [quality.md](quality.md) before every task in this repository,
+	  including tasks outside the @start.md loop.
+	- Preserve its backend/frontend boundaries, API contracts, validation parity,
+	  UI conventions, security controls, migration workflow, and validation requirements.
+	- Respect the existing backend and frontend file/folder structure and naming conventions.
+	  Extend established feature folders and responsibility-based modules first. Add a new
+	  subdivision only for a concrete relevant concern; avoid excessive nesting, fragmented
+	  micro-modules, and parallel or irregular organization. Follow the placement rules in
+	  quality.md; changing the established organization requires operator direction.
+	- For future backend features, model data in Ent schemas and run
+	  `make -C backend generate`; consume generated ORM CRUD/query builders through
+	  thin repositories so agent effort focuses on data modeling and business logic.
+	  Follow the Ent references and generation workflow in quality.md.
+	- Frontend-only tasks require frontend build and static checks; perform browser
+	  testing only when explicitly demanded by the operator.
+	- Every frontend feature and change request must use daisyUI primitives and the
+	  project's shared components. Read and apply the `tailwind-sane` skill before
+	  implementing frontend changes so Tailwind remains readable and consistent.
+	  Follow the detailed primitive and utility rules in quality.md.
+	- Change a standard only when explicitly requested by the operator, and update
+	  quality.md alongside the implementation so future runs follow the same rules.
 	
 	#LOOP	
 
@@ -35,10 +61,12 @@
 	- Read relevant files for the task scope you are assigned.
 	- Analyze the files carefully, propose an immediate planning with steps for that task.
 	- Perform the task.
-	- Run `make check` from the repository root as mandatory final validation.
-		- It runs lint/type/static analysis, complexity, duplication, full existing
-		  Go tests (including Docker/PostgreSQL integration), and native builds.
-		- If it fails: fix reported issues, run `make check` again, and repeat.
+	- Run mandatory final validation for the task scope as defined in quality.md.
+		- Frontend-only: run frontend lint, typecheck, complexity, duplication, and build.
+		  Browser testing requires an explicit operator demand.
+		- Backend, shared API-contract, or runtime/infrastructure changes: run root
+		  `make check`, including full Go/PostgreSQL tests and native builds.
+		- If validation fails: fix reported issues, rerun the applicable gate, and repeat.
 		- Only continue or consider the implementation complete after it passes.
 	- Ask for operator approval: 
 		- Case passed, mark task as DONE on planning. 
@@ -54,15 +82,23 @@
 
 	#LOCAL QUALITY GATE
 
-	- Workflow: implement -> make check -> fix reported issues -> make check -> repeat until clean.
+	- Workflow: implement -> scope-specific gate -> fix issues -> rerun -> repeat until clean.
 	- This applies to every implementation, including tasks outside the @start.md loop.
+	- Frontend-only gate: from frontend/vue-ui run `npm run lint`, `npm run typecheck`,
+	  `npm run complexity`, `npm run duplication`, and `npm run build`.
+	  These are sufficient; the full root gate/test suites are not required for that scope.
+	  Focus on code quality. Browser testing runs only on explicit operator demand.
+	- Backend, shared API-contract, and runtime/infrastructure changes require root `make check`.
 	- Install the pinned prerequisites in README.md before running the gate.
 	- `make lint`, `make complexity`, and `make duplication` isolate stages for diagnosis.
-	- Run the complete `make check` after the final code/configuration change; individual
-	  checks or a build alone do not replace it. Record its actual result when reporting work.
+	- Run the applicable gate after the final code/configuration change. For scopes requiring
+	  `make check`, individual checks or a build alone do not replace it.
+	  Record the task scope and actual result when reporting work. The frontend-only
+	  exception takes precedence over general `make check` instructions in workflow files.
 	- Do not hide failures, skip integration tests, raise thresholds, or broaden debt exclusions
 	  merely to pass. Distinguish pre-existing debt from new issues. The initial narrow Go
-	  exceptions are documented in VALIDATION.md; remove them as their debt is addressed.
+	  exceptions are documented in [quality.md](quality.md) and backend/.golangci.yml;
+	  remove them as their debt is addressed.
 	- Quality checks are local-only. Do not introduce CI as part of this workflow.
 
 	
@@ -74,12 +110,12 @@
 	- Build
 	  When the task involves creating a brand new feature.
 	  When building, ensure you stick to existing patterns, styles, arch and specs for 
-	  consistency with previous features. Most of the code is pre-styled and consumes
-	  proprietary 'ameii' libraries, and you should consistently implement features in the
-	  same style and philosophy.
+	  consistency with previous features. Follow the Go/Huma/Ent backend and
+	  Vue/TypeScript/FormKit/daisyUI frontend standards documented in quality.md.
 	- Update
 	  When the task involves updating/tweaking/extending pre-existing code to new propouses.
-	  This may come along with a new version of the 'ameii' libraries.
+	  Preserve the established stack and update the relevant standards in quality.md
+	  when the operator explicitly requests an approach change.
 	- Fix
           When the task involves fixing an error, an unexpected behaviour or bug.
 	  In this case, you should stick to a diagnose, compare and plan approach, considering
