@@ -39,9 +39,9 @@ function submit() {
 </script>
 
 <template>
-  <form class="max-w-xl space-y-6" :aria-busy="busy" @submit.prevent="submit">
-    <fieldset class="space-y-6" :disabled="busy">
-      <legend class="sr-only">Account information</legend>
+  <form class="w-full space-y-6" :class="{ 'surface max-w-3xl p-6 sm:p-8': !confirmPassword }" :aria-busy="busy" @submit.prevent="submit">
+    <fieldset class="grid gap-6" :class="{ 'sm:grid-cols-2': !confirmPassword }" :disabled="busy">
+      <legend :class="confirmPassword ? 'sr-only' : 'mb-6 text-base font-semibold'">Account details</legend>
       <div class="space-y-2">
         <label for="user-name" class="block text-sm font-medium">Full name</label>
         <input id="user-name" v-model="fields.name" class="input w-full" name="name" autocomplete="name" required maxlength="255" placeholder="Full name" />
@@ -53,16 +53,17 @@ function submit() {
         <p v-if="lockEmail" id="root-email-hint" class="text-xs text-base-content/60">The root email is managed in the server configuration.</p>
       </div>
       <PasswordField id="user-password" v-model="fields.password" :disabled="busy" :required="!editing" :min-length="6"
-        :label="editing ? 'New password (optional)' : 'Password'" :hint="editing ? 'Leave blank to keep the current password.' : 'Use at least 6 characters, up to 72 bytes.'" />
+        :class="{ 'sm:col-span-2 sm:max-w-md': !confirmPassword }"
+        :label="editing ? 'New password (optional)' : 'Password'" :hint="editing ? 'Leave blank to keep the current password.' : 'At least 6 characters. Maximum 72 bytes.'" />
       <PasswordField v-if="confirmPassword" id="user-password-confirm" v-model="confirmation" label="Confirm password" :disabled="busy" required :min-length="6" />
     </fieldset>
     <FeedbackAlert v-if="validationError || error" :message="validationError || error" />
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="flex flex-wrap items-center gap-3" :class="{ 'justify-end border-t border-base-300 pt-6': !confirmPassword }">
+      <slot name="actions" :busy="busy" />
       <button type="submit" class="btn btn-primary" :class="{ 'w-full': confirmPassword }" :disabled="busy">
         <span v-if="busy" class="loading loading-spinner loading-sm" aria-hidden="true"></span>
         {{ busy ? 'Saving…' : submitLabel }}
       </button>
-      <slot name="actions" :busy="busy" />
     </div>
   </form>
 </template>

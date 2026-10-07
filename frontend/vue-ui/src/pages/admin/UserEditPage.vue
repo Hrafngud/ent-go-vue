@@ -42,7 +42,7 @@ async function update(input: UserInput) {
 
 <template>
   <UsersBreadcrumbs label="Edit user" />
-  <PageHeader title="Edit user" description="Update account information or set a new password." />
+  <PageHeader title="Edit user" :description="user?.name" />
   <LoadingState v-if="query.isPending.value" label="Loading user…" />
   <div v-else-if="query.isError.value" class="space-y-4">
     <FeedbackAlert :message="userError(query.error.value, 'Could not load this user. Please try again.')" />

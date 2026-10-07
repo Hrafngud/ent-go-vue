@@ -20,7 +20,7 @@ exclude dependency, generated, coverage, and build output directories. Run
 
 The browser uses the API client in `src/api/client.ts`, with relative `/api` URLs. Local Vite development proxies those requests to `http://localhost:8080`; optionally set `API_PROXY_TARGET` in a frontend `.env` to change the native backend target.
 
-All routed screens live under `src/pages`; reusable UI lives under `src/components`. `App.vue` composes the route outlet and signed-in shell. UI controls use daisyUI 5 and semantic theme colors throughout, with the shared dark theme declared in `src/style.css`.
+All routed screens live under `src/pages`; reusable UI lives under `src/components`. `App.vue` composes the route outlet and signed-in shell. UI controls use daisyUI 5 and semantic theme colors throughout, with the original dark theme declared in `src/style.css`. The signed-in layout uses a desktop navigation rail and compact mobile navigation. DM Sans and Newsreader are bundled locally in `src/assets/fonts` with their OFL licenses; no external font requests are needed.
 
 Icons use the official [Phosphor Vue package](https://github.com/phosphor-icons/vue).
 Import individual components in each Vue component to keep unused icons out of the
@@ -51,7 +51,7 @@ src/
     layout/       BrandMark, AuthLayout, AppShell
     forms/        PasswordField
     ui/           PageHeader, LoadingState, FeedbackAlert
-    users/        UserForm, UserTable, UserIdentity, UserActions,
+    users/        UserForm, UserTable, UserIdentity, UserAvatar, UserActions,
                   UsersBreadcrumbs, DeleteUserPanel
     ConnectionStatus.vue
   router/         routes, session restoration, member/root guards

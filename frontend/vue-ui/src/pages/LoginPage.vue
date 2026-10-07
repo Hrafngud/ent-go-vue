@@ -33,7 +33,7 @@ async function signIn() {
 </script>
 
 <template>
-  <AuthLayout title="Welcome back." description="Sign in to continue.">
+  <AuthLayout title="Welcome back.">
     <FeedbackAlert v-if="route.query.registered === '1'" class="mb-6" kind="success" message="Your account is ready. Sign in to get started." />
     <FeedbackAlert v-if="session.notice" class="mb-6" kind="info" :message="session.notice" />
     <form class="space-y-6" :aria-busy="busy" @submit.prevent="signIn">
@@ -49,6 +49,6 @@ async function signIn() {
         {{ busy ? 'Signing in…' : 'Sign in' }}
       </button>
     </form>
-    <p class="mt-6 text-center text-sm text-base-content/70">New here? <RouterLink class="link link-primary" to="/register">Create an account</RouterLink></p>
+    <p class="mt-8 border-t border-base-300 pt-6 text-center text-sm text-base-content/65">New here? <RouterLink class="link link-primary link-hover" to="/register">Create an account</RouterLink></p>
   </AuthLayout>
 </template>

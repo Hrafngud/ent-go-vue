@@ -34,7 +34,7 @@ async function create(input: UserInput) {
 
 <template>
   <UsersBreadcrumbs label="Create user" />
-  <PageHeader title="Create user" description="Set up an account for someone joining your workspace." />
+  <PageHeader title="Create user" />
   <UserForm :busy="busy" :error="error" submit-label="Create user" @submit="create">
     <template #actions><RouterLink v-if="!busy" to="/admin/users" class="btn btn-ghost">Cancel</RouterLink></template>
   </UserForm>

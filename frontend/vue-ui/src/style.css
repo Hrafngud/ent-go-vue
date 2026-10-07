@@ -1,5 +1,26 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./assets/fonts/dm-sans-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Newsreader";
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./assets/fonts/newsreader-italic-latin.woff2") format("woff2");
+}
+
+@theme {
+  --font-sans: "DM Sans", sans-serif;
+  --font-display: "Newsreader", Georgia, serif;
+}
+
 @plugin "daisyui" {
   themes: dark --default;
 }
@@ -49,4 +70,88 @@
   --border: 2px;
   --depth: 0;
   --noise: 0;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    background: var(--color-base-100);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    color: var(--color-primary-content);
+    background: var(--color-primary);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
+  }
+
+  h1:focus {
+    outline: none;
+  }
+}
+
+@layer components {
+  .app-shell {
+    min-height: 100dvh;
+  }
+
+  .page-title {
+    font-size: clamp(1.75rem, 1.4rem + 1vw, 2.25rem);
+    line-height: 1.2;
+    letter-spacing: -0.04em;
+    font-weight: 600;
+  }
+
+  .surface {
+    border: var(--border) solid var(--color-base-300);
+    border-radius: var(--radius-box);
+    background: var(--color-base-200);
+  }
+
+  .auth-title {
+    font-family: var(--font-display);
+    font-size: clamp(2.75rem, 2.2rem + 1.5vw, 3.5rem);
+    font-style: italic;
+    font-weight: 500;
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+  }
+
+  .password-input {
+    position: relative;
+  }
+
+  .password-input > .input {
+    padding-right: 6rem;
+  }
+
+  .password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.25rem;
+    transform: translateY(-50%);
+  }
+
+  @media (width >= 64rem) {
+    .app-shell {
+      display: grid;
+      grid-template-columns: 15rem minmax(0, 1fr);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .page-enter {
+    animation: page-enter 220ms ease-out both;
+  }
+
+  @keyframes page-enter {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 }
