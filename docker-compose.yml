@@ -65,6 +65,8 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env with hostname postgres}
       PORT: ${BACKEND_PORT:-8080}
       JWT_SECRET: ${JWT_SECRET:?Set a random JWT_SECRET of at least 32 characters in .env}
+      ROOT_EMAIL: ${ROOT_EMAIL:-}
+      ROOT_PASSWORD: ${ROOT_PASSWORD:-}
     depends_on:
       postgres:
         condition: service_healthy

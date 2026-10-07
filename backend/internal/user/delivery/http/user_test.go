@@ -12,13 +12,16 @@ import (
 	"time"
 
 	"backend-golang/ent"
+	entuser "backend-golang/ent/user"
 	"backend-golang/internal/httpapi"
+	userrepo "backend-golang/internal/user/repository"
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestUserAndAuthAPI_Integration(t *testing.T) {
@@ -81,6 +84,64 @@ func TestUserAndAuthAPI_Integration(t *testing.T) {
 			if resp.StatusCode != http.StatusOK {
 				t.Fatalf("%s: expected 200, got %d", path, resp.StatusCode)
 			}
+		}
+	})
+
+	t.Run("Root provisioning and password rotation", func(t *testing.T) {
+		const email = "root@example.com"
+		const password = "initial-root-password"
+		if err := userrepo.SyncRootUser(ctx, client, "", ""); err != nil {
+			t.Fatal(err)
+		}
+		count, err := client.User.Query().Count(ctx)
+		if err != nil || count != 0 {
+			t.Fatal("disabled provisioning created an account")
+		}
+		if err := userrepo.SyncRootUser(ctx, client, email, password); err != nil {
+			t.Fatal(err)
+		}
+		initial, err := client.User.Query().Where(entuser.Email(email)).Only(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if initial.Name != "Root" || initial.Password == password || bcrypt.CompareHashAndPassword([]byte(initial.Password), []byte(password)) != nil {
+			t.Fatal("root account was not created with a hashed password")
+		}
+		if err := userrepo.SyncRootUser(ctx, client, email, password); err != nil {
+			t.Fatal(err)
+		}
+		unchanged, err := client.User.Get(ctx, initial.ID)
+		if err != nil || unchanged.Password != initial.Password {
+			t.Fatal("unchanged credentials rewrote the password")
+		}
+		const rotated = "rotated-root-password"
+		if err := userrepo.SyncRootUser(ctx, client, email, rotated); err != nil {
+			t.Fatal(err)
+		}
+		current, err := client.User.Query().Where(entuser.Email(email)).Only(ctx)
+		if err != nil || current.ID != initial.ID || !current.CreatedAt.Equal(initial.CreatedAt) {
+			t.Fatal("password rotation replaced the root account")
+		}
+		for _, credentials := range []struct {
+			password string
+			status   int
+		}{{password, http.StatusUnauthorized}, {rotated, http.StatusOK}} {
+			body, err := json.Marshal(map[string]string{"email": email, "password": credentials.password})
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp, err := http.Post(ts.URL+"/api/auth/login", "application/json", bytes.NewReader(body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp.Body.Close()
+			if resp.StatusCode != credentials.status {
+				t.Fatalf("root login: got %d, want %d", resp.StatusCode, credentials.status)
+			}
+		}
+		count, err = client.User.Query().Count(ctx)
+		if err != nil || count != 1 {
+			t.Fatal("repeated provisioning duplicated the root account")
 		}
 	})
 

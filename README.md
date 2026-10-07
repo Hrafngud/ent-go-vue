@@ -56,7 +56,18 @@ docker compose ps --all
 
 `docker compose up -d` also builds missing images on a fresh checkout. After source or dependency changes, rebuild with `docker compose up --build -d`.
 
-Open <http://localhost/>. The page should display **Backend: connected** and **Database: connected**. If port 80 is occupied, set `HTTP_PORT=18080` in `.env` and open <http://localhost:18080/> instead.
+Open <http://localhost/> to reach the login page. Sign in to see **Backend: connected** and **Database: connected**. If port 80 is occupied, set `HTTP_PORT=18080` in `.env` and open <http://localhost:18080/> instead.
+
+To configure a root login, set both values in the root `.env` (or `backend/.env` for native development):
+
+```dotenv
+ROOT_EMAIL=root@example.com
+ROOT_PASSWORD=replace_with_your_own_password
+```
+
+Replace the example password with your own 8–72 byte password; example placeholders are rejected. On startup, the backend creates an account named **Root** with a bcrypt password hash, or updates the password of the account with that email while preserving its ID. To apply changes in Compose, run `docker compose up --build -d backend frontend nginx`; native development requires restarting the API. Changing `ROOT_EMAIL` provisions the new email and leaves the previous account intact. Leaving both values blank disables provisioning and preserves existing accounts. This configures a regular account; the current schema has no administrator roles or extra root privileges.
+
+The browser restores a signed-in session on reload using a token in tab-scoped session storage, validated against `/api/users/me`. **Sign out** clears the browser session. Tokens expire after 24 hours; password changes do not revoke already-issued tokens.
 
 ```bash
 curl --fail http://localhost/api/health
@@ -159,6 +170,7 @@ docker compose up -d
 | `BACKEND_PORT` | Internal backend listening/proxy port, default `8080` |
 | `HTTP_PORT` | Only publicly published application port, default `80` |
 | `JWT_SECRET` | Required random HS256 signing secret, at least 32 characters |
+| `ROOT_EMAIL`, `ROOT_PASSWORD` | Optional root login; set both to create/update the account at startup; password must be 8–72 bytes |
 | `POSTGRES_PORT` | Loopback host port used only by the development override, default `55432` |
 | `PORT` | Native backend listening port, default `8080`; set from `BACKEND_PORT` in Compose |
 | `API_PROXY_TARGET` | Optional local Vite proxy target, default `http://localhost:8080` |

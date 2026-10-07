@@ -15,6 +15,7 @@ import (
 	"backend-golang/ent"
 	"backend-golang/internal/config"
 	"backend-golang/internal/httpapi"
+	userrepo "backend-golang/internal/user/repository"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -55,6 +56,9 @@ func run() error {
 	// Verify the existing schema without mutating it. Atlas runs separately.
 	if _, err := client.User.Query().Limit(1).All(ctx); err != nil {
 		return fmt.Errorf("database schema unavailable; apply Atlas migrations first: %w", err)
+	}
+	if err := userrepo.SyncRootUser(ctx, client, cfg.RootEmail, cfg.RootPassword); err != nil {
+		return err
 	}
 
 	server := &http.Server{

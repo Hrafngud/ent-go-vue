@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"net"
+	"net/mail"
 	"net/url"
 	"os"
 	"strconv"
@@ -10,13 +11,26 @@ import (
 )
 
 type Config struct {
-	DatabaseURL string
-	Port        string
-	JWTSecret   []byte
+	DatabaseURL  string
+	Port         string
+	JWTSecret    []byte
+	RootEmail    string
+	RootPassword string
 }
 
 func Load() (Config, error) {
 	cfg := Config{DatabaseURL: os.Getenv("DATABASE_URL"), Port: value("PORT", "8080"), JWTSecret: []byte(os.Getenv("JWT_SECRET"))}
+	cfg.RootEmail = strings.TrimSpace(os.Getenv("ROOT_EMAIL"))
+	cfg.RootPassword = os.Getenv("ROOT_PASSWORD")
+	if cfg.RootEmail != "" || cfg.RootPassword != "" {
+		address, err := mail.ParseAddress(cfg.RootEmail)
+		if err != nil || address.Address != cfg.RootEmail {
+			return Config{}, errors.New("ROOT_EMAIL must be a valid email address when root credentials are configured")
+		}
+		if len(cfg.RootPassword) < 8 || len(cfg.RootPassword) > 72 || strings.TrimSpace(cfg.RootPassword) == "" || strings.HasPrefix(cfg.RootPassword, "replace_with_") {
+			return Config{}, errors.New("ROOT_PASSWORD must contain 8 to 72 bytes and must not be an example placeholder")
+		}
+	}
 	port, err := strconv.Atoi(cfg.Port)
 	if err != nil || port < 1 || port > 65535 {
 		return Config{}, errors.New("PORT must be an integer between 1 and 65535")
