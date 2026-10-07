@@ -1,0 +1,117 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    cpus: ${POSTGRES_CPUS:-1.0}
+    mem_limit: ${POSTGRES_MEMORY_LIMIT:-1g}
+    memswap_limit: ${POSTGRES_MEMORY_LIMIT:-1g}
+    pids_limit: ${POSTGRES_PIDS_LIMIT:-256}
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  # A separate deployment step applies only pending, checksummed Atlas SQL files.
+  # Restarting the backend never applies or generates migrations.
+  migrate:
+    build:
+      context: ./backend
+      target: migrations
+    cpus: ${MIGRATE_CPUS:-0.5}
+    mem_limit: ${MIGRATE_MEMORY_LIMIT:-256m}
+    memswap_limit: ${MIGRATE_MEMORY_LIMIT:-256m}
+    pids_limit: ${MIGRATE_PIDS_LIMIT:-64}
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env with hostname postgres}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  backend:
+    build:
+      context: ./backend
+      target: runtime
+    cpus: ${BACKEND_CPUS:-1.0}
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-512m}
+    memswap_limit: ${BACKEND_MEMORY_LIMIT:-512m}
+    pids_limit: ${BACKEND_PIDS_LIMIT:-128}
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env with hostname postgres}
+      PORT: ${BACKEND_PORT:-8080}
+      JWT_SECRET: ${JWT_SECRET:?Set a random JWT_SECRET of at least 32 characters in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:$${PORT}/api/ready > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  nginx:
+    build:
+      context: .
+      dockerfile: frontend/vue-ui/Dockerfile
+    cpus: ${NGINX_CPUS:-0.5}
+    mem_limit: ${NGINX_MEMORY_LIMIT:-128m}
+    memswap_limit: ${NGINX_MEMORY_LIMIT:-128m}
+    pids_limit: ${NGINX_PIDS_LIMIT:-64}
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    environment:
+      BACKEND_PORT: ${BACKEND_PORT:-8080}
+      NGINX_ENVSUBST_FILTER: ^BACKEND_PORT$$
+    ports:
+      - "${HTTP_PORT:-80}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/api/ready > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres_data:

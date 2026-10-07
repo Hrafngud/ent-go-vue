@@ -3,21 +3,17 @@ package http_test
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"backend-golang/ent"
-	authhttp "backend-golang/internal/auth/delivery/http"
-	authuc "backend-golang/internal/auth/usecase"
-	userhttp "backend-golang/internal/user/delivery/http"
-	userrepo "backend-golang/internal/user/repository"
-	useruc "backend-golang/internal/user/usecase"
+	"backend-golang/internal/httpapi"
 
-	"github.com/danielgtaylor/huma/v2"
-	"github.com/danielgtaylor/huma/v2/adapters/humago"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/testcontainers/testcontainers-go"
@@ -32,14 +28,19 @@ func TestUserAndAuthAPI_Integration(t *testing.T) {
 
 	ctx := context.Background()
 
+	migrations, err := filepath.Glob("../../../../ent/migrate/migrations/*.sql")
+	if err != nil || len(migrations) == 0 {
+		t.Fatal("migration files unavailable")
+	}
 	pgContainer, err := postgres.Run(ctx,
-		"postgres:15-alpine",
+		"postgres:17-alpine",
 		postgres.WithDatabase("test-db"),
 		postgres.WithUsername("test-user"),
 		postgres.WithPassword("test-pass"),
+		postgres.WithInitScripts(migrations...),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).WithStartupTimeout(5*time.Second)),
+				WithOccurrence(2).WithStartupTimeout(60*time.Second)),
 	)
 	if err != nil {
 		t.Fatalf("failed to start container: %s", err)
@@ -61,33 +62,33 @@ func TestUserAndAuthAPI_Integration(t *testing.T) {
 	}
 	defer client.Close()
 
-	if err := client.Schema.Create(ctx); err != nil {
-		t.Fatalf("failed creating schema resources: %v", err)
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	// Wire the application
-	userRepo := userrepo.NewEntRepository(client)
-	
-	authUC := authuc.NewUsecase(userRepo)
-	myUserUC := useruc.NewMyUsecase(userRepo)
-	publicUserUC := useruc.NewPublicUsecase(userRepo)
-
-	router := http.NewServeMux()
-	config := huma.DefaultConfig("Test API", "1.0.0")
-	api := humago.New(router, config)
-
-	authhttp.RegisterRoutes(api, authUC)
-	userhttp.RegisterMyUserRoutes(api, myUserUC)
-	userhttp.RegisterPublicUserRoutes(api, publicUserUC)
-
-	ts := httptest.NewServer(router)
+	defer db.Close()
+	secret := []byte("integration-test-secret-at-least-32-characters")
+	ts := httptest.NewServer(httpapi.New(client, db, secret))
 	defer ts.Close()
+
+	t.Run("Health and database readiness", func(t *testing.T) {
+		for _, path := range []string{"/api/health", "/api/ready", "/api/openapi.json", "/api/users"} {
+			resp, err := http.Get(ts.URL + path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("%s: expected 200, got %d", path, resp.StatusCode)
+			}
+		}
+	})
 
 	var jwtToken string
 
 	t.Run("Register User", func(t *testing.T) {
 		reqBody := []byte(`{"name":"Auth User","email":"auth@test.com","password":"securepassword123"}`)
-		resp, err := http.Post(ts.URL+"/auth/register", "application/json", bytes.NewBuffer(reqBody))
+		resp, err := http.Post(ts.URL+"/api/auth/register", "application/json", bytes.NewBuffer(reqBody))
 		if err != nil {
 			t.Fatalf("failed to make POST request: %v", err)
 		}
@@ -100,7 +101,7 @@ func TestUserAndAuthAPI_Integration(t *testing.T) {
 
 	t.Run("Login User", func(t *testing.T) {
 		reqBody := []byte(`{"email":"auth@test.com","password":"securepassword123"}`)
-		resp, err := http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(reqBody))
+		resp, err := http.Post(ts.URL+"/api/auth/login", "application/json", bytes.NewBuffer(reqBody))
 		if err != nil {
 			t.Fatalf("failed to make POST request: %v", err)
 		}
@@ -116,7 +117,7 @@ func TestUserAndAuthAPI_Integration(t *testing.T) {
 		if err := json.NewDecoder(resp.Body).Decode(&actualResp); err != nil {
 			t.Fatalf("failed to decode response: %v", err)
 		}
-		
+
 		if actualResp.Token == "" {
 			t.Fatalf("expected token, got empty string")
 		}
@@ -124,11 +125,11 @@ func TestUserAndAuthAPI_Integration(t *testing.T) {
 	})
 
 	var userID uuid.UUID
-	
+
 	t.Run("Get My Profile (Protected)", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, ts.URL+"/users/me", nil)
+		req, _ := http.NewRequest(http.MethodGet, ts.URL+"/api/users/me", nil)
 		req.Header.Set("Authorization", "Bearer "+jwtToken)
-		
+
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Fatalf("failed to make GET request: %v", err)
@@ -155,21 +156,21 @@ func TestUserAndAuthAPI_Integration(t *testing.T) {
 	})
 
 	t.Run("Get My Profile (Unauthorized)", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, ts.URL+"/users/me", nil)
-		
+		req, _ := http.NewRequest(http.MethodGet, ts.URL+"/api/users/me", nil)
+
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Fatalf("failed to make GET request: %v", err)
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != 422 { // Huma might throw 422 if header is required
-			t.Fatalf("expected status 401 or 422, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("expected status 401, got %d", resp.StatusCode)
 		}
 	})
 
 	t.Run("Get User Detail (Public)", func(t *testing.T) {
-		resp, err := http.Get(ts.URL + "/users/" + userID.String())
+		resp, err := http.Get(ts.URL + "/api/users/" + userID.String())
 		if err != nil {
 			t.Fatalf("failed to make GET request: %v", err)
 		}
@@ -194,7 +195,7 @@ func TestUserAndAuthAPI_Integration(t *testing.T) {
 	})
 
 	t.Run("List Users (Public)", func(t *testing.T) {
-		resp, err := http.Get(ts.URL + "/users")
+		resp, err := http.Get(ts.URL + "/api/users")
 		if err != nil {
 			t.Fatalf("failed to make GET request: %v", err)
 		}

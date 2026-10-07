@@ -12,14 +12,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var JWTSecret = []byte("super-secret-key") // In a real app, this should be in an environment variable
-
 type authUsecase struct {
 	userRepo user.Repository
+	secret   []byte
 }
 
-func NewUsecase(userRepo user.Repository) auth.Usecase {
-	return &authUsecase{userRepo: userRepo}
+func NewUsecase(userRepo user.Repository, secret []byte) auth.Usecase {
+	return &authUsecase{userRepo: userRepo, secret: secret}
 }
 
 func (u *authUsecase) Register(ctx context.Context, name, email, password string) error {
@@ -53,5 +52,5 @@ func (u *authUsecase) Login(ctx context.Context, email, password string) (string
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
 	})
 
-	return token.SignedString(JWTSecret)
+	return token.SignedString(u.secret)
 }

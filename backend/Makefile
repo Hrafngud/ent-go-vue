@@ -1,7 +1,10 @@
+ATLAS ?= ./bin/atlas
+ATLAS_VERSION ?= v1.3.0
+
 .PHONY: run generate tidy migrate atlas-install apply test test-integration
 
 run:
-	go run cmd/api/main.go
+	go run ./cmd/api
 
 generate:
 	go generate ./ent
@@ -21,17 +24,16 @@ migrate:
 		exit 1; \
 	fi
 	mkdir -p ent/migrate/migrations
-	./bin/atlas migrate diff $(name) \
+	$(ATLAS) migrate diff $(name) \
 		--dir "file://ent/migrate/migrations" \
 		--to "ent://ent/schema" \
-		--dev-url "docker://postgres/15/dev?search_path=public"
+		--dev-url "docker://postgres/17/dev?search_path=public"
 
 atlas-install:
 	mkdir -p bin
-	curl -sSfL https://release.ariga.io/atlas/atlas-darwin-arm64-latest -o bin/atlas
+	@atlas_os=$$(go env GOOS); atlas_arch=$$(go env GOARCH); \
+		curl -fsSL "https://release.ariga.io/atlas/atlas-$$atlas_os-$$atlas_arch-$(ATLAS_VERSION)" -o bin/atlas
 	chmod +x bin/atlas
 
 apply:
-	./bin/atlas migrate apply \
-		--dir "file://ent/migrate/migrations" \
-		--url "postgres://devuser:devpassword@localhost:5439/golang_boilerplate_db?sslmode=disable"
+	$(ATLAS) migrate apply --env app

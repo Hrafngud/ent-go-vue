@@ -1,72 +1,89 @@
 package main
 
 import (
+	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"backend-golang/ent"
-	authhttp "backend-golang/internal/auth/delivery/http"
-	authuc "backend-golang/internal/auth/usecase"
-	userhttp "backend-golang/internal/user/delivery/http"
-	userrepo "backend-golang/internal/user/repository"
-	useruc "backend-golang/internal/user/usecase"
+	"backend-golang/internal/config"
+	"backend-golang/internal/httpapi"
 
-	"net/http"
-
-	"github.com/danielgtaylor/huma/v2"
-	"github.com/danielgtaylor/huma/v2/adapters/humago"
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	// Load .env file if it exists
-	_ = godotenv.Load()
-
-	// 1. Initialize Postgres Database & Ent Client
-	dsn := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable",
-		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"), os.Getenv("DB_NAME"), os.Getenv("DB_PASSWORD"))
-	
-	client, err := ent.Open("postgres", dsn)
-	if err != nil {
-		log.Fatalf("failed opening connection to sqlite: %v", err)
+	if err := run(); err != nil {
+		log.Fatal(err)
 	}
+}
+
+func run() error {
+	// Native development only; Docker supplies environment variables directly.
+	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("load .env: %w", err)
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	db, err := sql.Open("postgres", cfg.DatabaseURL)
+	if err != nil {
+		return errors.New("invalid PostgreSQL configuration")
+	}
+	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxLifetime(30 * time.Minute)
+	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
 	defer client.Close()
 
-	// 2. Setup Standard Library Router
-	router := http.NewServeMux()
-
-	// 3. Setup Huma API on top of standard ServeMux
-	config := huma.DefaultConfig("Backend API Boilerplate", "1.0.0")
-	
-	// Add security scheme to API config
-	config.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
-		"bearerAuth": {
-			Type:         "http",
-			Scheme:       "bearer",
-			BearerFormat: "JWT",
-		},
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		return errors.New("PostgreSQL unavailable; check database configuration and health")
 	}
-	
-	api := humago.New(router, config)
-
-	// 4. Wire dependencies (Feature Modules)
-	userRepo := userrepo.NewEntRepository(client)
-	
-	authUC := authuc.NewUsecase(userRepo)
-	myUserUC := useruc.NewMyUsecase(userRepo)
-	publicUserUC := useruc.NewPublicUsecase(userRepo)
-
-	// 5. Register Routes
-	authhttp.RegisterRoutes(api, authUC)
-	userhttp.RegisterMyUserRoutes(api, myUserUC)
-	userhttp.RegisterPublicUserRoutes(api, publicUserUC)
-
-	// 6. Start Server
-	log.Println("Server is running on http://localhost:8080")
-	log.Println("Swagger UI is available at http://localhost:8080/docs")
-	if err := http.ListenAndServe(":8080", router); err != nil {
-		log.Fatalf("failed to run server: %v", err)
+	// Verify the existing schema without mutating it. Atlas runs separately.
+	if _, err := client.User.Query().Limit(1).All(ctx); err != nil {
+		return fmt.Errorf("database schema unavailable; apply Atlas migrations first: %w", err)
 	}
+
+	server := &http.Server{
+		Addr:              ":" + cfg.Port,
+		Handler:           httpapi.New(client, db, cfg.JWTSecret),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20,
+		// No global write timeout, so streaming responses can remain open.
+	}
+	stop, stopCancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stopCancel()
+	serverErr := make(chan error, 1)
+	go func() { serverErr <- server.ListenAndServe() }()
+	log.Printf("API listening on :%s; docs at /api/docs; PostgreSQL connected", cfg.Port)
+
+	select {
+	case err := <-serverErr:
+		if !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("serve API: %w", err)
+		}
+	case <-stop.Done():
+		shutdown, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer shutdownCancel()
+		if err := server.Shutdown(shutdown); err != nil {
+			_ = server.Close()
+			return fmt.Errorf("shutdown API: %w", err)
+		}
+	}
+	return nil
 }

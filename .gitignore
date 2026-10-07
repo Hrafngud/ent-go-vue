@@ -1,0 +1,6 @@
+.env
+.env.*
+!.env.example
+backend/bin/
+backend/api
+*.log

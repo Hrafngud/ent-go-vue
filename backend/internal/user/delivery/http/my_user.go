@@ -11,7 +11,7 @@ import (
 )
 
 type MyUserRequest struct {
-	middleware.ProtectedRequest
+	Authorization string `header:"Authorization" doc:"Bearer token"`
 }
 
 type MyUserResponse struct {
@@ -20,15 +20,17 @@ type MyUserResponse struct {
 	}
 }
 
-func RegisterMyUserRoutes(api huma.API, uc user.MyUsecase) {
+func RegisterMyUserRoutes(api huma.API, uc user.MyUsecase, secret []byte) {
 	huma.Register(api, huma.Operation{
 		OperationID: "get-my-profile",
 		Method:      http.MethodGet,
 		Path:        "/users/me",
 		Summary:     "Get current user profile",
 		Tags:        []string{"Users"},
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+		Middlewares: huma.Middlewares{middleware.RequireJWT(api, secret)},
 	}, func(ctx context.Context, input *MyUserRequest) (*MyUserResponse, error) {
-		usr, err := uc.GetProfile(ctx, input.UserID)
+		usr, err := uc.GetProfile(ctx, middleware.UserID(ctx))
 		if err != nil {
 			return nil, huma.Error404NotFound("user not found", err)
 		}
