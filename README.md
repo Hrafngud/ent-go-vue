@@ -8,7 +8,7 @@ A full-stack boilerplate for building applications with Go and Vue. Includes reg
 ## Architecture
 
 ```text
-Browser → Nginx
+Browser → Cloudflare Tunnel or VPS Nginx (HTTPS) → application Nginx (HTTP)
           ├── /      → Vue frontend
           └── /api/* → Go API → PostgreSQL
 ```
@@ -39,7 +39,7 @@ Edit `.env` before starting:
 - Replace `POSTGRES_PASSWORD` and use the same credentials in `DATABASE_URL`. Keep the URL hostname as `postgres`; percent-encode special characters in credentials.
 - Replace `JWT_SECRET` with at least 32 random characters (`openssl rand -hex 32`). The API rejects the example placeholder.
 - Optionally set both `ROOT_EMAIL` and `ROOT_PASSWORD` to provision an administrator. Use your own 8–72 byte password. Startup reapplies this password.
-- Set `HTTP_PORT` if port 80 is unavailable; for example, `HTTP_PORT=18080`.
+- `HTTP_PORT` defaults to `18080`, published only on `127.0.0.1` for the outer proxy.
 
 ```bash
 docker compose config --quiet
@@ -47,7 +47,7 @@ docker compose up --build -d
 docker compose ps --all
 ```
 
-Open <http://localhost/> (or your configured port). Register an account or sign in with the configured administrator. API documentation is at `/api/docs`; OpenAPI is at `/api/openapi.json`. Use `/api/health` for liveness and `/api/ready` for database readiness.
+Open <http://127.0.0.1:18080/> (or your configured port). Register an account or sign in with the configured administrator. API documentation is at `/api/docs`; OpenAPI is at `/api/openapi.json`. Use `/api/health` for liveness and `/api/ready` for database readiness. Existing `.env` files retain their chosen `HTTP_PORT`.
 
 Compose starts PostgreSQL, applies migrations, then starts the API, frontend, and proxy. The migration container exits successfully when done. Only Nginx publishes an application port; database data persists in `postgres_data`.
 
@@ -57,6 +57,65 @@ docker compose down          # stop and preserve database data
 ```
 
 Use `docker compose up --build -d` after source changes. `docker compose down -v` deletes database data. Database initialization credentials only take effect when the volume is first created.
+
+## External HTTPS and proxy trust
+
+TLS terminates at Cloudflare or the VPS-wide Nginx. Application Nginx stays HTTP,
+uses relative redirects, owns the common response headers, and preserves route CSP
+and cache policies. The API trusts only application Nginx, using its fixed internal
+address. Application Nginx trusts no outer forwarding headers by default.
+
+Set `TRUSTED_EDGE_CIDRS` to the exact outer proxy socket peers **as seen by application
+Nginx**. For host-local VPS Nginx or `cloudflared` through the published Docker port,
+this is commonly the bridge gateway (for example `172.30.90.1/32`); confirm it in
+application Nginx access logs before enabling trust. List multiple numeric CIDRs
+with commas. For a containerized connector, give it a fixed private address and
+trust that `/32` (or IPv6 `/128`). Do not trust all addresses or the whole application
+subnet. Empty trust is safe but visitors behind one edge share its IP quota until
+the deployment configures the correct peer.
+
+Trusted edges must provide a trustworthy `X-Forwarded-For` chain and a single
+`X-Forwarded-Proto: http` or `https`. Nginx restores the last untrusted visitor IP,
+forwards only that IP to the API, and accepts scheme hints only from a trusted socket
+peer. Untrusted hints are ignored; alternative forwarding fields are stripped.
+Both proxy locations inherit this normalization; adding location-level
+`proxy_set_header` directives requires preserving the complete set.
+
+For **VPS Nginx + Certbot**, use
+[vps-edge.conf.example](docker/nginx/vps-edge.conf.example) as a starting point.
+Replace the hostname/paths/port, obtain the certificate before loading its HTTPS
+block, validate with `nginx -t`, and check automatic renewal with `certbot renew
+--dry-run`. The HTTP listener permits ACME validation and redirects application
+traffic to a fixed HTTPS hostname. The HTTPS listener owns one HSTS field, including
+errors. Assign a deployment owner to observe the initial one-day HSTS rollout and
+increase its duration after certificate renewal and route checks pass.
+
+For **Cloudflare Tunnel**, point a host-local connector at
+`http://127.0.0.1:18080`, or a containerized connector at `http://nginx:8080` on a
+private network. Configure Cloudflare HTTPS redirects and HTTPS-only HSTS for the
+intended hostname. Check the actual forwarded IP chain before enabling peer trust;
+Cloudflare appends visitor/proxy information to `X-Forwarded-For` and overwrites
+`X-Forwarded-Proto`. Direct public access to application Nginx must remain blocked.
+Tunnel development should target application Nginx to receive its document policy.
+
+Keep HSTS ownership at the external edge. Decide `includeSubDomains` only after
+inventorying affected hosts, delegated services, and HTTPS readiness. Decide preload
+separately; emitting the directive does not enroll a domain. Avoid zone-wide changes
+that would affect unrelated development hosts. Nginx suppresses its version but
+still emits `Server: nginx`; product-header removal depends on outer-edge support.
+
+After deployment, check HTTP redirects and HTTPS headers for `/`, `/api`, `/api/docs`,
+a real asset, a missing asset, and an unauthenticated API request. Confirm redirects
+preserve the external scheme/port, HSTS appears exactly once on HTTPS, API responses
+retain `no-store`, and per-visitor limits remain distinct. Test outer-edge error
+responses too. Local proxy regression checks run with
+`python3 docker/nginx/security_test.py` after building its image.
+
+References: [Nginx real-IP handling](https://nginx.org/en/docs/http/ngx_http_realip_module.html),
+[Cloudflare forwarding headers](https://developers.cloudflare.com/fundamentals/reference/http-headers/),
+[Cloudflare HTTPS redirects](https://developers.cloudflare.com/ssl/edge-certificates/additional-options/always-use-https/),
+[Cloudflare HSTS](https://developers.cloudflare.com/ssl/edge-certificates/additional-options/http-strict-transport-security/),
+and [OWASP HSTS guidance](https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Strict_Transport_Security_Cheat_Sheet.html).
 
 ## Make commands
 

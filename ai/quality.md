@@ -380,11 +380,20 @@ introduce a competing top-level feature tree that duplicates `pages/`, `api/`,
 
 ## Runtime changes and completion
 
-Preserve the production boundary: browser → Nginx → static frontend or `/api` backend
+Preserve the production boundary: browser → Cloudflare Tunnel or VPS-wide Nginx
+(external HTTPS) → application Nginx (internal HTTP) → static frontend or `/api` backend
 → PostgreSQL. Base Compose publishes only the reverse proxy; native database access
 belongs in the development override. Keep separate migration execution, health-based
 startup dependencies, non-root application runtimes, capability restrictions, and
 configured resource limits. Vite remains a development server.
+
+Keep application publication on loopback and outer-edge peer trust explicit and
+narrow. Preserve relative redirects, normalized client IP/scheme forwarding, one
+effective common header set, route-owned CSP/cache policies, and backend trust only
+for application Nginx. Public HTTPS redirects and HSTS belong to the external edge;
+subdomain coverage and preload require a deployment/domain-owner decision. Run
+`python3 docker/nginx/security_test.py` after building the proxy image when changing
+this boundary, alongside the runtime checks below.
 
 For changes to Docker, Compose, Nginx, or migrations, supplement `make check` with the
 relevant configuration validation, image builds, migration checks, and runtime smoke
