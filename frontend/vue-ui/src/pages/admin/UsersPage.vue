@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { PhArrowClockwise, PhUserPlus } from '@phosphor-icons/vue'
 import { useUsersQuery } from '../../queries/users'
 import { useSessionStore } from '../../stores/session'
 import { userError } from '../../api/errors'
@@ -31,7 +32,7 @@ watch(pageCount, count => { page.value = Math.min(page.value, count) })
 
 <template>
   <PageHeader title="Users" description="Manage the people in your workspace." eyebrow="Administration">
-    <RouterLink to="/admin/users/new" class="btn btn-primary">Create user</RouterLink>
+    <RouterLink to="/admin/users/new" class="btn btn-primary"><PhUserPlus :size="20" aria-hidden="true" />Create user</RouterLink>
   </PageHeader>
   <div class="mb-6 flex flex-wrap items-end gap-4">
     <div class="w-full min-w-0 space-y-2 sm:w-auto sm:flex-1">
@@ -46,6 +47,7 @@ watch(pageCount, count => { page.value = Math.min(page.value, count) })
     </div>
     <button class="btn btn-ghost" :disabled="query.isFetching.value" @click="query.refetch()">
       <span v-if="query.isFetching.value" class="loading loading-spinner loading-xs" aria-hidden="true"></span>
+      <PhArrowClockwise v-else :size="20" aria-hidden="true" />
       Refresh
     </button>
   </div>
@@ -61,7 +63,7 @@ watch(pageCount, count => { page.value = Math.min(page.value, count) })
       <h2 class="text-xl font-semibold">{{ users.length ? 'No matching users' : 'Add your first user' }}</h2>
       <p class="mt-2 text-base-content/70">{{ users.length ? 'Try another name or email address.' : 'Create an account for someone joining your workspace.' }}</p>
       <button v-if="users.length" class="btn btn-ghost mt-4" @click="search = ''">Clear search</button>
-      <RouterLink v-else to="/admin/users/new" class="btn btn-primary mt-4">Create user</RouterLink>
+      <RouterLink v-else to="/admin/users/new" class="btn btn-primary mt-4"><PhUserPlus :size="20" aria-hidden="true" />Create user</RouterLink>
     </div>
     <nav v-if="pageCount > 1" class="mt-6 flex flex-wrap items-center justify-between gap-4" aria-label="Users pagination">
       <p class="text-sm text-base-content/60" role="status">Page {{ page }} of {{ pageCount }}</p>

@@ -16,6 +16,7 @@
     "duplication": "jscpd --config .jscpd.json"
   },
   "dependencies": {
+    "@phosphor-icons/vue": "^2.2.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/vue-query": "^5.104.1",
     "daisyui": "^5.7.47",

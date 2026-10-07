@@ -39,6 +39,7 @@ Ran `npm outdated`, `npm update`, `npm audit`, `npm install`, and `npm run build
 | TypeScript | 6.0.3 |
 | Tailwind / Tailwind Vite plugin | 4.3.3 |
 | daisyUI | 5.7.47 |
+| Phosphor Icons (`@phosphor-icons/vue`) | 2.2.1 (added with individual component imports) |
 | Pinia | 4.0.3 |
 | TanStack Vue Query | 5.104.1 |
 | Vite Vue plugin | 6.0.9 |

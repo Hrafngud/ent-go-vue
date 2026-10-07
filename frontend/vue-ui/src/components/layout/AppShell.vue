@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { PhSignOut, PhSquaresFour, PhUsers } from '@phosphor-icons/vue'
 import { useRouter } from 'vue-router'
 import { useQueryClient } from '@tanstack/vue-query'
 import { useSessionStore } from '../../stores/session'
@@ -27,12 +28,12 @@ function signOut() {
       <div class="ml-auto flex min-w-0 items-center gap-3">
         <span class="hidden max-w-xs truncate text-sm text-base-content/70 sm:block">{{ session.user?.name }}</span>
         <span v-if="session.isAdmin" class="badge badge-primary badge-outline badge-sm">Root</span>
-        <button class="btn btn-ghost btn-sm" @click="signOut">Sign out</button>
+        <button class="btn btn-ghost btn-sm" @click="signOut"><PhSignOut :size="20" aria-hidden="true" />Sign out</button>
       </div>
       <nav class="w-full" aria-label="Main navigation">
         <ul class="menu menu-horizontal gap-1 p-0">
-          <li><RouterLink to="/workspace" active-class="menu-active">Workspace</RouterLink></li>
-          <li v-if="session.isAdmin"><RouterLink to="/admin/users" active-class="menu-active">Users</RouterLink></li>
+          <li><RouterLink to="/workspace" active-class="menu-active"><PhSquaresFour :size="20" aria-hidden="true" />Workspace</RouterLink></li>
+          <li v-if="session.isAdmin"><RouterLink to="/admin/users" active-class="menu-active"><PhUsers :size="20" aria-hidden="true" />Users</RouterLink></li>
         </ul>
       </nav>
     </div>

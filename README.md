@@ -1,6 +1,6 @@
 # Ent Go Vue
 
-Vue 3 + TypeScript + Vite + Tailwind CSS 4 + daisyUI 5, backed by Go's `net/http`, Huma, Ent, Atlas, and PostgreSQL. TanStack Vue Query owns server state; Pinia is available for client state.
+Vue 3 + TypeScript + Vite + Tailwind CSS 4 + daisyUI 5 + Phosphor Icons, backed by Go's `net/http`, Huma, Ent, Atlas, and PostgreSQL. TanStack Vue Query owns server state; Pinia is available for client state.
 
 ## Architecture
 

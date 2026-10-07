@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { PhEye, PhEyeSlash } from '@phosphor-icons/vue'
 const model = defineModel<string>({ default: '' })
 withDefaults(defineProps<{
   id: string
@@ -21,7 +22,11 @@ const visible = ref(false)
         :autocomplete="autocomplete" :disabled="disabled" :required="required" :minlength="minLength"
         :aria-describedby="hint ? `${id}-hint` : undefined" />
       <button class="btn btn-ghost" type="button" :disabled="disabled" :aria-controls="id" :aria-pressed="visible"
-        :aria-label="`${visible ? 'Hide' : 'Show'} ${label.toLowerCase()}`" @click="visible = !visible">{{ visible ? 'Hide' : 'Show' }}</button>
+        :aria-label="`${visible ? 'Hide' : 'Show'} ${label.toLowerCase()}`" @click="visible = !visible">
+        <PhEyeSlash v-if="visible" :size="20" aria-hidden="true" />
+        <PhEye v-else :size="20" aria-hidden="true" />
+        {{ visible ? 'Hide' : 'Show' }}
+      </button>
     </div>
     <p v-if="hint" :id="`${id}-hint`" class="text-xs text-base-content/60">{{ hint }}</p>
   </div>

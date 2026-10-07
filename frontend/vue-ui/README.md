@@ -1,6 +1,6 @@
 # Vue UI
 
-Vue 3 Composition API + TypeScript + Vue Router 4 + Vite + Tailwind CSS 4 + daisyUI 5 + Pinia + TanStack Vue Query.
+Vue 3 Composition API + TypeScript + Vue Router 4 + Vite + Tailwind CSS 4 + daisyUI 5 + Phosphor Icons + Pinia + TanStack Vue Query.
 
 ```bash
 npm ci
@@ -21,6 +21,25 @@ exclude dependency, generated, coverage, and build output directories. Run
 The browser uses the API client in `src/api/client.ts`, with relative `/api` URLs. Local Vite development proxies those requests to `http://localhost:8080`; optionally set `API_PROXY_TARGET` in a frontend `.env` to change the native backend target.
 
 All routed screens live under `src/pages`; reusable UI lives under `src/components`. `App.vue` composes the route outlet and signed-in shell. UI controls use daisyUI 5 and semantic theme colors throughout, with the shared dark theme declared in `src/style.css`.
+
+Icons use the official [Phosphor Vue package](https://github.com/phosphor-icons/vue).
+Import individual components in each Vue component to keep unused icons out of the
+production bundle. Icons inherit the surrounding text color and use the default
+regular weight, with 20px sizing for controls (16px for compact controls).
+Keep visible labels on actions and hide decorative icons from assistive technology:
+
+```vue
+<script setup lang="ts">
+import { PhUserPlus } from '@phosphor-icons/vue'
+</script>
+
+<template>
+  <button type="button" class="btn btn-primary">
+    <PhUserPlus :size="20" aria-hidden="true" />
+    Create user
+  </button>
+</template>
+```
 
 ```text
 src/

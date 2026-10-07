@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { PhArrowClockwise } from '@phosphor-icons/vue'
 import { useHealthQuery, useReadinessQuery } from '../queries/health'
 
 const health = useHealthQuery()
@@ -19,6 +20,7 @@ function refresh() {
         <h2 id="connection-title" class="text-2xl font-semibold">Connection status</h2>
       </div>
       <button class="btn btn-outline btn-sm" :disabled="checking" @click="refresh">
+        <PhArrowClockwise :size="20" aria-hidden="true" />
         {{ checking ? 'Checking…' : 'Check again' }}
       </button>
     </div>
