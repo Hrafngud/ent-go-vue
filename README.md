@@ -6,11 +6,11 @@ Vue 3 + TypeScript + Vite + Tailwind CSS 4 + daisyUI 5, backed by Go's `net/http
 
 ```text
 Browser → Nginx :8080 (published on HTTP_PORT, default 80)
-             ├── /           Vue production assets and SPA fallback
+             ├── /           Frontend :8080 → Vue production assets and SPA fallback
              └── /api/*      Go backend :BACKEND_PORT → PostgreSQL :5432
 ```
 
-The application follows the root Compose and unprivileged-container conventions in the local `webgalidor` reference. Static serving and API proxying share one Nginx image. Only Nginx publishes a port in the base configuration. PostgreSQL persists in `postgres_data`. The backend keeps its existing feature-based Clean Architecture, Ent schemas, and Atlas SQL history.
+The application follows the separate reverse-proxy, frontend, and backend services in the local `Galidor` reference. The frontend image builds Vue and serves its static assets with an unprivileged Nginx runtime. A separate Nginx reverse proxy sends `/` to the frontend and `/api/*` to the backend, so the SPA and API share one origin and port. Only the reverse proxy publishes a port in the base configuration. PostgreSQL persists in `postgres_data`. The backend keeps its existing feature-based Clean Architecture, Ent schemas, and Atlas SQL history.
 
 ```text
 backend/
@@ -27,8 +27,10 @@ frontend/vue-ui/
   src/queries/                TanStack Query health/readiness requests
   src/components/             visible connectivity display
   Dockerfile                  Node build → static assets in Nginx
+  nginx.conf                  frontend static serving and SPA fallback
   vite.config.ts              local /api proxy
-docker/nginx/nginx.conf       SPA and API proxy configuration template
+docker/nginx/Dockerfile       separate reverse-proxy image
+docker/nginx/nginx.conf       frontend and API proxy configuration template
 docker-compose.yml           integrated application
 docker-compose.dev.yml        optional loopback database port for native development
 .env.example                 Compose configuration template
@@ -67,7 +69,7 @@ curl --fail http://localhost/api/users
 Huma documentation and OpenAPI are available at `/api/docs` and `/api/openapi.json`. Feature routes live under `/api/auth/*` and `/api/users*` in both native and container execution.
 
 ```bash
-docker compose logs nginx backend postgres migrate
+docker compose logs nginx frontend backend postgres migrate
 docker compose down
 ```
 
@@ -82,7 +84,7 @@ For a controlled deployment, review migrations before running:
 ```bash
 docker compose up -d postgres
 docker compose run --rm migrate
-docker compose up -d backend nginx
+docker compose up -d backend frontend nginx
 ```
 
 `make migrate` is the root wrapper for the same application step. Run it after rebuilding the migration image when SQL files change. It is safe to repeat when nothing is pending; Atlas records applied versions in its revision table. The exited `migrate` container is expected, not a failed application service.
@@ -163,7 +165,7 @@ docker compose up -d
 
 Native Go execution still supports `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, and optional `DB_SSLMODE` when `DATABASE_URL` is unset. `DATABASE_URL` takes precedence. Credentials are URL-encoded when building the legacy connection string. Container configuration uses one `DATABASE_URL` for both Atlas and the API.
 
-The Nginx configuration is rendered at startup using only `BACKEND_PORT`; all Nginx variables are preserved. API requests retain `/api`, proxy headers, HTTP/1.1 upgrade support, and unbuffered streaming. Docker DNS is re-resolved so replacing a backend container does not leave Nginx pointing to its old IP.
+The reverse-proxy Nginx configuration is rendered at startup using only `BACKEND_PORT`; all Nginx variables are preserved. API requests retain `/api`, proxy headers, HTTP/1.1 upgrade support, and unbuffered streaming. Docker DNS is re-resolved for both upstreams so replacing a backend or frontend container does not leave Nginx pointing to its old IP. The frontend serves nested SPA routes with `index.html`, returns 404 for missing assets, and preserves asset and HTML cache policies through the proxy. Nginx starts after both upstreams are healthy; its healthcheck requests both the SPA and API readiness endpoint.
 
 ## Container resource limits
 
@@ -173,6 +175,7 @@ The base Compose file enforces CPU, memory, process/thread, and open-file ceilin
 | --- | --- | --- | --- | --- |
 | PostgreSQL | 1 CPU | 1 GiB | 256 | 4096 |
 | Backend | 1 CPU | 512 MiB | 128 | 4096 |
+| Frontend | 0.5 CPU | 128 MiB | 64 | 4096 |
 | Nginx | 0.5 CPU | 128 MiB | 64 | 4096 |
 | Migration job | 0.5 CPU | 256 MiB | 64 | 4096 |
 
@@ -220,7 +223,7 @@ docker compose config --quiet
 docker compose build
 docker compose up -d
 docker compose ps --all
-docker compose logs nginx backend postgres
+docker compose logs nginx frontend backend postgres
 ```
 
 Backend integration tests initialize PostgreSQL 17 from the repository's actual SQL migrations, then use the same `/api` router as the binary. Unit tests cover configuration precedence and credentials, database failure readiness, and JWT signature/expiration checks. The frontend production build type-checks with `vue-tsc`.

@@ -37,6 +37,21 @@ Validated on 2026-10-07 against the repository worktree and local Docker Engine.
 
 ## Local runtime state
 
+### Separate frontend container follow-up
+
+Validated on 2026-10-07 after inspecting the approved reference at `/home/joaod/Documentos/Github/Galidor`. The integrated static-serving/proxy image was split into a `frontend` image and a separate `nginx` reverse-proxy image. Nginx routes `/` to `frontend:8080` and `/api/` to the backend, publishing the existing application port.
+
+- Base and development-override `docker compose config --quiet` checks passed.
+- `docker compose build frontend nginx` passed, including the frontend's `vue-tsc` type check and Vite production build.
+- `docker compose up -d --wait --wait-timeout 120` passed. Frontend, reverse proxy, backend, and PostgreSQL were healthy; the migration job exited 0. The existing database volume was retained.
+- `docker compose exec -T frontend nginx -t` and `docker compose exec -T nginx nginx -t` passed.
+- HTTP checks at `http://localhost:18080/` passed for the SPA, `/index.html`, a nested SPA route with a query string, both built JS/CSS assets, `/api/health`, `/api/ready`, `/api/users`, `/api/docs`, and `/api/openapi.json`. Readiness reported the database connected. Missing assets and unknown API paths returned 404; unknown API paths did not receive the SPA fallback.
+- HTML retained `Cache-Control: no-cache`; built assets retained their one-year cache policy through the proxy. Security headers were present on successful and error responses.
+- Docker inspection confirmed only `nginx` publishes a host port. The frontend runs as a non-root user with 0.5 CPU, 128 MiB memory/memory+swap, 64 PIDs, and soft/hard `nofile` limits of 4096. Running containers had no OOM kills or automatic restarts.
+- `git diff --check` passed.
+
+This follow-up changes `.env.example`, `docker-compose.yml`, `docker/nginx/nginx.conf`, `frontend/vue-ui/Dockerfile`, `README.md`, `frontend/vue-ui/README.md`, `DEPENDENCIES.md`, and this validation record. It adds `docker/nginx/Dockerfile` and `frontend/vue-ui/nginx.conf`. Application source, dependencies, and migrations are unchanged.
+
 ### Resource-limit follow-up
 
 Validated on 2026-10-07 after adding limits to `docker-compose.yml`, configurable defaults to `.env.example`, and operating guidance to `README.md`. No application code or images changed in this follow-up.
@@ -48,7 +63,7 @@ Validated on 2026-10-07 after adding limits to `docker-compose.yml`, configurabl
 - A bounded concurrent smoke check passed 300/300 health, readiness, and user-list requests with 12 workers. This verifies basic operation under the limits; it is not a production capacity benchmark.
 - Container checks found no OOM kills or automatic restarts. Startup/migration logs were clean, and `git diff --check` passed.
 
-The main application is left running at **http://localhost:18080/**. Port 80 already belonged to another application, so the ignored local root `.env` sets `HTTP_PORT=18080`; the committed example and Compose default remain 80. The backend and PostgreSQL have no host port bindings. The application volume is retained.
+The main application is left running at **http://localhost:18080/**. Port 80 already belonged to another application, so the ignored local root `.env` sets `HTTP_PORT=18080`; the committed example and Compose default remain 80. The frontend, backend, and PostgreSQL have no host port bindings. The application volume is retained.
 
 The temporary fresh-check Compose project and its test-only volume were removed. The temporary user used for auth/persistence acceptance was deleted. Native Go/Vite validation processes were stopped. Random local credentials are in ignored `.env` files, not committed examples. Atlas's installed `backend/bin/atlas` and build outputs are also ignored.
 

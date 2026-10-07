@@ -12,11 +12,11 @@ The browser uses the API client in `src/api/client.ts`, with relative `/api` URL
 
 `src/queries/health.ts` owns the server health/readiness state in TanStack Query. `ConnectionStatus.vue` displays API and database connectivity, loading/errors, and a refresh action. Pinia is reserved for client/application state.
 
-Production builds static assets into the root Compose Nginx service; Vite is used only for development. The Dockerfile's build context is the repository root so it can include `docker/nginx/nginx.conf`:
+The production `frontend` service builds static assets and serves them with an unprivileged Nginx runtime using this directory's `nginx.conf`. Its Dockerfile's build context is `frontend/vue-ui`. The separate root Compose `nginx` service proxies `/` to this container and `/api/` to the backend, publishing one application port. Vite is used only for development.
 
 ```bash
 # Run from repository root:
-docker compose build nginx
+docker compose build frontend nginx
 ```
 
 See the [root README](../../README.md) for the full stack, migrations, and native development setup.

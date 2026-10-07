@@ -52,6 +52,6 @@ Ran `npm outdated`, `npm update`, `npm audit`, `npm install`, and `npm run build
 - PostgreSQL 17 Alpine, matching the reference project's supported database generation without introducing a PostgreSQL data-directory migration.
 - Go 1.27.1 Alpine builder, compiling a static API into Alpine 3.23 with certificates and a non-root user.
 - Atlas 1.3.0 only in the separate migration image; no development tooling in the API runtime.
-- Node 24 Alpine builder; unprivileged Nginx 1.30 Alpine runtime serving only built frontend assets and the proxy configuration.
+- Node 24 Alpine builder; unprivileged Nginx 1.30 Alpine runtime serving built assets in the frontend container, plus a separate unprivileged Nginx 1.30 Alpine reverse-proxy container.
 
 Application containers drop capabilities and use `no-new-privileges`. PostgreSQL has a persistent named volume and a healthcheck; only Nginx has a published host port in the base Compose configuration.
