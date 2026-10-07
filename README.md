@@ -120,7 +120,7 @@ For a database that predates Atlas tracking, inspect its schema and establish th
 
 ## Native development
 
-Requires Go 1.26.4 or newer (the module selects toolchain 1.27.1), Node 22.12+ or 24+, npm, and Docker for the optional database and integration tests.
+Requires Go 1.26.4 or newer (the module selects toolchain 1.27.1), Node 22.13+ or 24+, npm, and Docker for the optional database and integration tests.
 
 Start only PostgreSQL with an explicit development port:
 
@@ -215,12 +215,64 @@ docker stats --no-stream $(docker compose ps -q)
 
 ## Test and operate
 
+The mandatory final validation for local development and agent tasks is `make check`
+from the repository root. Implement, run it, fix reported issues, and repeat until it
+passes. This is a local gate; there is no CI workflow.
+
+On a fresh checkout, install GNU Make, the Go/Node/npm versions above, and
+[golangci-lint 2.14.0](https://github.com/golangci/golangci-lint/releases/tag/v2.14.0).
+Docker must be running and accessible to your user for the existing PostgreSQL
+Testcontainers integration tests; PostgreSQL 17 Alpine and Ryuk images must be
+available locally or downloadable on the first run. No application `.env`, running
+application stack, or manually provisioned database is needed for the gate.
+
+```bash
+# From the repository root; install the pinned linter into the ignored backend/bin:
+curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/v2.14.0/install.sh -o /tmp/ent-go-vue-install-golangci-lint.sh
+sh /tmp/ent-go-vue-install-golangci-lint.sh -b backend/bin v2.14.0
+npm --prefix frontend/vue-ui ci
+make check
+```
+
+Alternatively install that exact linter version on `PATH` and use
+`make check GOLANGCI_LINT=golangci-lint`. Frontend tools are exact dev dependencies
+recorded in the npm lockfile, invoked locally without downloading tools during checks.
+
+| Command | Checks |
+| --- | --- |
+| `make lint` | Go errcheck, govet, ineffassign, staticcheck, unused; ESLint recommended JavaScript/TypeScript and essential Vue rules; `vue-tsc` |
+| `make complexity` | Go cyclop at 15; frontend ESLint complexity at 15 (also runs the same frontend lint rules) |
+| `make duplication` | Go dupl at 100 tokens; frontend jscpd at 5% duplicated lines, minimum 5 lines/50 tokens per clone |
+| `make check` | All three targets in order, then existing Go tests, vet, API build, and Vue type-check/production build |
+
+Every failing tool stops its target with a nonzero status. `make check` runs stages
+sequentially even with `make -j`; Go tests use `-count=1` to actually run integration
+tests on each pass. `make build` remains the separate production Docker image build.
+There is currently no frontend test runner; the gate includes its existing type and
+production build checks.
+
+Go lint/vet targets select `backend/cmd/**` and `backend/internal/**`; generated Ent
+code under `backend/ent/**` is excluded from lint findings and never selected as a
+lint/vet target. Ent still compiles as a dependency and during tests/builds. Add any
+new authored Go package roots to these targets when extending the layout.
+Frontend checks exclude `node_modules`, `dist`, `dist-ssr`, `coverage`, `generated`,
+and declaration files. jscpd scans JS/TS, Vue SFCs (scripts and templates), and CSS.
+ESLint complexity measures functions in TypeScript and Vue scripts.
+
+The initial Go scan exposed existing complexity and cleanup-error debt. Narrow,
+documented exceptions in `backend/.golangci.yml` preserve existing application code;
+the complexity exceptions match exact function names and values, so increases fail.
+See [the quality-gate validation record](VALIDATION.md#local-quality-gate) for the
+baseline. Do not broaden exceptions or raise thresholds to pass a task; remove
+exceptions as their debt is fixed.
+
 ```bash
 make up                 # docker compose up -d
 make down               # stop, preserve database volume
 make logs               # follow service logs
 make build              # build production images
 make test               # Go tests/vet/build and frontend production build
+make check              # mandatory complete local quality gate
 make migrate            # apply pending migrations using the migration image
 ```
 

@@ -125,3 +125,72 @@ Validation passed:
 - Headless Chromium against the rebuilt local app at `http://127.0.0.1:18080`: registration/password confirmation, empty 201 response handling, login, reload/session restoration, member route guards, real root CRUD, duplicate-email feedback, optional password preservation, password rotation, delete confirmation/cancellation, root protections, and missing-user errors.
 - Browser response interception verified pagination/sorting/search, empty lists, service error/retry recovery, and expired-session cleanup. Desktop (1280px) and mobile (375px) screenshots were inspected. Mobile users render as a stacked daisyUI list with visible View/Edit actions and full-width search; no page overflow or browser runtime errors occurred.
 - Temporary browser-test accounts were deleted afterward. Rebuilt backend/frontend/proxy and PostgreSQL services report healthy. No database schema migration was needed.
+
+## Local quality gate
+
+Implemented and validated on 2026-10-07. The gate is local-only: root `make lint`,
+`make complexity`, `make duplication`, and canonical `make check`. `make check`
+serializes those stages and then reuses `make test` (uncached full Go tests,
+auth/user PostgreSQL integration, vet, API build, Vue type-check/production build).
+No CI workflows or unrelated application refactoring were added.
+
+Prerequisites and installation are in [README.md](README.md#test-and-operate).
+Validated with Go 1.27.1, Node 22.17.0, npm 11.6.4, Docker Engine 29.7.2,
+golangci-lint 2.14.0 (official release checksum verified), ESLint 10.12.0,
+typescript-eslint 8.71.1, eslint-plugin-vue 10.11.1, vue-eslint-parser 10.3.0,
+and jscpd 5.4.0. New frontend tooling is pinned in the lockfile; existing package
+versions were unchanged. ESLint 10 requires raising the native Node minimum from
+22.12 to 22.13. A fresh `npm ci` succeeded and reported zero vulnerabilities.
+
+### Pre-existing debt
+
+The first unfiltered Go scan, before any application source changes, reported the
+following. `backend/.golangci.yml` contains narrowly scoped exceptions so this
+integration preserves the existing code rather than refactoring it to satisfy a
+new tool. The general threshold stays 15, including tests.
+
+| Existing finding | Baseline treatment |
+| --- | --- |
+| `internal/config/config.go:21`, `Load`: complexity 24 | Exception matches this path, function, and exact complexity 24; any different value above 15 fails |
+| `internal/user/delivery/http/user_test.go:27`, `TestUserAndAuthAPI_Integration`: complexity 70 | Exception matches this path, function, and exact complexity 70 |
+| `cmd/api/main.go:49`: unchecked deferred `client.Close()` | Exception matches the file, specific errcheck message, and exact source expression |
+| `internal/user/delivery/http/user_test.go:66,72`: unchecked deferred client/database close | Same narrow path/message/source treatment |
+| `internal/user/delivery/http/user_test.go:83,137,156,169,198,226,238,263,289`: unchecked response-body close | Exception restricted to response-body cleanup calls in this existing integration-test file |
+
+Cleanup exceptions also match identical expressions added in these same files;
+reviewers must not extend that debt. Other unchecked calls and paths still fail.
+Remove exceptions when the underlying debt is fixed; do not broaden them to pass
+future tasks. There were no Go clones at 100 tokens. Frontend ESLint and complexity
+passed without debt exceptions. The Vue-only `no-useless-assignment` override
+addresses the [known template-read false positive](https://github.com/vuejs/eslint-plugin-vue/issues/2660);
+unused bindings still receive TypeScript and typescript-eslint checks.
+
+jscpd at 50 tokens/5 lines reports one existing seven-line template clone between
+`UserDetailPage.vue:22-28` and `UserEditPage.vue:45-51`, approximately 0.4% duplication.
+The initial 5% ceiling tolerates this small amount of declarative repetition while
+still detecting substantial copy/paste. Existing code was not changed to erase it.
+
+### Executed checks and probes
+
+| Check | Result |
+| --- | --- |
+| `golangci-lint config verify` | Passed |
+| Root `make lint` | Passed: Go static analysis, ESLint, `vue-tsc` |
+| Root `make complexity` | Passed: cyclop and ESLint complexity at 15, with the documented Go baseline |
+| Root `make duplication` | Passed: dupl at 100 tokens; jscpd at 50 tokens/5 lines and 5% ceiling |
+| Root `make test` | Passed: uncached PostgreSQL-backed integration tests, unit tests, vet, API build, frontend type-check and Vite production build |
+| Final root `make check` after fresh `npm ci` and removal of all probes | Passed, exit 0: every quality stage, uncached full Go tests including PostgreSQL integration (13.773s), vet/API build, and Vue type-check/Vite production build; jscpd reported 0.43%, below 5% |
+| Temporary Go function at complexity 16 | `make complexity` exited 2 with cyclop finding |
+| Temporary TS and Vue script functions at complexity 16 | Each `make complexity` exited 2 with ESLint complexity finding |
+| Existing `Load` temporarily raised from 24 to 25 | `make -C backend complexity` exited 2; exact-value baseline does not allow increases |
+| Temporary duplicated Go and frontend source blocks | Each `make duplication` exited 2 with its detector's finding |
+| Temporary TypeScript type mismatch | `make lint` exited 2 with TS2322 |
+| Temporary explicit-any lint violation | Root `make check` exited 2 at lint, without reaching later stages |
+| Ent exclusion fixture with complexity, duplication, and unused code, without generated marker | All three individual root checks passed; Ent is never selected as a lint target |
+| Parsing-error/duplicate fixtures in frontend dependency/build/coverage/generated directories | All three individual root checks passed; ESLint API confirmed every fixture had no applicable config |
+| `git diff --check` | Passed; no application source or generated Ent changes |
+
+All temporary source fixtures were removed, and the original configuration source
+was restored byte for byte after its complexity probe. Generated Ent source and
+migrations were unchanged. The ignored native golangci-lint binary remains in
+`backend/bin/` so the documented root commands work locally.

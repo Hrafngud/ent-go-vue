@@ -35,9 +35,11 @@
 	- Read relevant files for the task scope you are assigned.
 	- Analyze the files carefully, propose an immediate planning with steps for that task.
 	- Perform the task.
-	- Run a simple build check:
-		- If pass: continue.
-		- If logs errors: fix the errors on the fly.
+	- Run `make check` from the repository root as mandatory final validation.
+		- It runs lint/type/static analysis, complexity, duplication, full existing
+		  Go tests (including Docker/PostgreSQL integration), and native builds.
+		- If it fails: fix reported issues, run `make check` again, and repeat.
+		- Only continue or consider the implementation complete after it passes.
 	- Ask for operator approval: 
 		- Case passed, mark task as DONE on planning. 
 		- Case partial approval, take note of inconsistency and prioritize opperator suggested
@@ -49,6 +51,19 @@
 	#LOOP FINISHED
 
 ```
+
+	#LOCAL QUALITY GATE
+
+	- Workflow: implement -> make check -> fix reported issues -> make check -> repeat until clean.
+	- This applies to every implementation, including tasks outside the @start.md loop.
+	- Install the pinned prerequisites in README.md before running the gate.
+	- `make lint`, `make complexity`, and `make duplication` isolate stages for diagnosis.
+	- Run the complete `make check` after the final code/configuration change; individual
+	  checks or a build alone do not replace it. Record its actual result when reporting work.
+	- Do not hide failures, skip integration tests, raise thresholds, or broaden debt exclusions
+	  merely to pass. Distinguish pre-existing debt from new issues. The initial narrow Go
+	  exceptions are documented in VALIDATION.md; remove them as their debt is addressed.
+	- Quality checks are local-only. Do not introduce CI as part of this workflow.
 
 	
 	#TASK CATTEGORY:

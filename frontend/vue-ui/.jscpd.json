@@ -1,0 +1,19 @@
+{
+  "path": ["."],
+  "pattern": "**/*.{js,mjs,cjs,ts,tsx,mts,cts,vue,css}",
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/dist-ssr/**",
+    "**/coverage/**",
+    "**/generated/**",
+    "**/*.d.ts"
+  ],
+  "gitignore": true,
+  "minLines": 5,
+  "minTokens": 50,
+  "threshold": 5,
+  "failOnEmpty": true,
+  "reporters": ["console"],
+  "mode": "mild"
+}

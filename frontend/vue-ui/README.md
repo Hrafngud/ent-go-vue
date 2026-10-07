@@ -3,10 +3,20 @@
 Vue 3 Composition API + TypeScript + Vue Router 4 + Vite + Tailwind CSS 4 + daisyUI 5 + Pinia + TanStack Vue Query.
 
 ```bash
-npm install
+npm ci
 npm run dev
+npm run lint
+npm run typecheck
+npm run complexity
+npm run duplication
 npm run build
 ```
+
+Requires Node 22.13+ or 24+. ESLint checks JS/TS and Vue scripts with complexity 15;
+jscpd checks frontend duplication with a 5% ceiling and 50-token minimum. Both
+exclude dependency, generated, coverage, and build output directories. Run
+`make check` from the repository root as the mandatory final validation; see the
+[root setup instructions](../../README.md#test-and-operate) for pinned prerequisites.
 
 The browser uses the API client in `src/api/client.ts`, with relative `/api` URLs. Local Vite development proxies those requests to `http://localhost:8080`; optionally set `API_PROXY_TARGET` in a frontend `.env` to change the native backend target.
 
