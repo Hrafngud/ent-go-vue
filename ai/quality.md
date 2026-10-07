@@ -147,6 +147,11 @@ other checkouts. Use the committed configurations and this file for current stan
 - Update setup instructions and environment examples when commands or configuration
   change. Keep dependency manifests and lockfiles consistent; introduce dependencies
   for a concrete need and preserve the current stack unless directed otherwise.
+- Keep the root README short and developer-facing: boilerplate purpose, stack,
+  prerequisites, setup/run commands, and essential checks. Put architecture,
+  implementation, and detailed deployment guidance in dedicated docs and link to them.
+  Update existing instructions rather than appending change history or feature-by-feature
+  implementation summaries.
 
 ## File and folder structure
 
