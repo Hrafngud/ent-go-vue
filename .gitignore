@@ -4,3 +4,4 @@
 backend/bin/
 backend/api
 *.log
+/VALIDATION.md

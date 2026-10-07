@@ -35,6 +35,6 @@ The API checks the migrated schema on startup, supports SIGTERM shutdown, and ne
 Install the pinned linter into `bin/golangci-lint` as documented in the
 [root README](../README.md#test-and-operate), or override `GOLANGCI_LINT` with its
 installed path. Lint targets select `cmd` and `internal`, excluding Ent. Existing
-debt exceptions are recorded in [VALIDATION.md](../VALIDATION.md#local-quality-gate).
+debt exceptions are documented in [.golangci.yml](.golangci.yml).
 Every implementation must finish with a passing `make check` at the repository root,
 which also runs the frontend checks and full integration tests/builds.
