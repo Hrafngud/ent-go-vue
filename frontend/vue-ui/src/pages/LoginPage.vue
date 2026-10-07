@@ -33,7 +33,7 @@ async function signIn() {
 </script>
 
 <template>
-  <AuthLayout title="Welcome back.">
+  <AuthLayout title="Welcome back." description="Your workspace is ready." eyebrow="Your account" split>
     <FeedbackAlert v-if="route.query.registered === '1'" class="mb-6" kind="success" message="Your account is ready. Sign in to get started." />
     <FeedbackAlert v-if="session.notice" class="mb-6" kind="info" :message="session.notice" />
     <form class="space-y-6" :aria-busy="busy" @submit.prevent="signIn">
